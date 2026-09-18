@@ -1,0 +1,1565 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Comment Sorter</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400&display=swap" rel="stylesheet">
+<script defer src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/docx@9.6.1/dist/index.iife.js"></script>
+<style>
+:root {
+  --paper: #F4F6F9;
+  --surface: #FFFFFF;
+  --ink: #1C2536;
+  --ink-2: #4F5B70;
+  --ink-3: #7C879A;
+  --line: #DCE1E9;
+  --line-2: #C3CAD6;
+  --navy: #002F87;
+  --navy-h: #0B3FA6;
+  --navy-soft: #E8EDF7;
+  --plum: #93278F;
+  --mark: #FFE48A;
+  --skip: #9AA3B2;
+  --danger: #B42318;
+  --ui: "Segoe UI Variable Text", "Segoe UI", system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif;
+  --read: "Source Serif 4", Georgia, "Times New Roman", serif;
+}
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body { margin: 0; background: var(--paper); color: var(--ink); font: 15px/1.5 var(--ui); }
+button, input, select, textarea { font: inherit; color: inherit; }
+h1, h2, h3 { line-height: 1.25; margin: 0; }
+h1 { font-size: 1.75rem; font-weight: 600; letter-spacing: -0.01em; }
+h2 { font-size: 1.2rem; font-weight: 600; }
+h3 { font-size: 1rem; font-weight: 600; }
+p { margin: 0; }
+a { color: var(--navy); }
+:focus-visible { outline: 2px solid var(--navy); outline-offset: 2px; }
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.muted { color: var(--ink-2); }
+.small { font-size: 0.867rem; }
+kbd { font: 600 0.75rem var(--ui); border: 1px solid var(--line-2); border-bottom-width: 2px; border-radius: 4px; padding: 0 5px; background: var(--surface); color: var(--ink-2); white-space: nowrap; }
+
+/* Buttons */
+.btn { display: inline-flex; align-items: center; gap: 8px; border: 1px solid var(--line-2); background: var(--surface); border-radius: 6px; padding: 7px 14px; cursor: pointer; font-weight: 500; white-space: nowrap; }
+.btn:hover { border-color: var(--ink-3); }
+.btn.primary { background: var(--navy); border-color: var(--navy); color: #fff; }
+.btn.primary:hover { background: var(--navy-h); }
+.btn.primary kbd { background: transparent; color: #fff; border-color: rgba(255,255,255,.5); }
+.btn.quiet { border-color: transparent; background: transparent; color: var(--navy); padding: 6px 8px; }
+.btn.quiet:hover { background: var(--navy-soft); }
+.btn.danger { color: var(--danger); }
+.btn:disabled { opacity: .45; cursor: not-allowed; }
+.btn.sm { padding: 4px 10px; font-size: 0.867rem; }
+.linkbtn { border: 0; background: none; padding: 0; color: var(--navy); text-decoration: underline; cursor: pointer; }
+
+/* Top bar */
+.topbar { position: sticky; top: 0; z-index: 20; background: var(--surface); border-bottom: 1px solid var(--line); }
+.topbar-in { display: flex; align-items: center; gap: 16px; padding: 10px 20px; }
+.brand { display: flex; align-items: center; gap: 10px; font-weight: 600; font-size: 1.05rem; white-space: nowrap; }
+.brand svg { flex: none; }
+.projname { color: var(--ink-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.spacer { flex: 1; }
+.savestate { color: var(--ink-3); font-size: 0.8rem; white-space: nowrap; }
+.savestate.warn { color: var(--danger); }
+.progress { height: 4px; background: var(--line); display: flex; }
+.progress span { display: block; height: 100%; }
+.progress .p-rev { background: var(--navy); }
+.progress .p-skip { background: var(--skip); }
+.menu { position: relative; }
+.menu > summary { list-style: none; }
+.menu > summary::-webkit-details-marker { display: none; }
+.menu-list { position: absolute; right: 0; top: calc(100% + 6px); background: var(--surface); border: 1px solid var(--line); border-radius: 8px; box-shadow: 0 8px 24px rgba(28,37,54,.12); padding: 6px; min-width: 230px; display: grid; }
+.menu-list button { text-align: left; border: 0; background: none; padding: 8px 10px; border-radius: 5px; cursor: pointer; }
+.menu-list button:hover { background: var(--navy-soft); }
+.menu-list hr { border: 0; border-top: 1px solid var(--line); margin: 4px 0; width: 100%; }
+
+/* Tabs */
+.tabs { display: flex; gap: 4px; padding: 0 20px; }
+.tab { border: 0; background: none; padding: 10px 12px 9px; cursor: pointer; color: var(--ink-2); font-weight: 500; border-bottom: 2px solid transparent; }
+.tab[aria-selected="true"] { color: var(--navy); border-bottom-color: var(--navy); }
+.tab .count { color: var(--ink-3); font-weight: 400; margin-left: 4px; }
+
+/* Landing */
+.landing { max-width: 720px; margin: 64px auto; padding: 0 20px; }
+.landing h1 { font-size: 2.25rem; margin-bottom: 12px; }
+.landing .lede { font-size: 1.1rem; color: var(--ink-2); max-width: 60ch; margin-bottom: 28px; }
+.drop { display: grid; place-items: center; gap: 6px; text-align: center; padding: 44px 20px; border: 2px dashed var(--line-2); border-radius: 12px; background: var(--surface); cursor: pointer; transition: border-color .15s, background .15s; }
+.drop:hover, .drop.over { border-color: var(--navy); background: var(--navy-soft); }
+.drop strong { font-size: 1.1rem; color: var(--navy); }
+.drop input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+.resume { margin-top: 24px; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 16px 18px; display: flex; gap: 16px; align-items: center; flex-wrap: wrap; }
+.resume .grow { flex: 1; min-width: 200px; }
+.landing .alt { margin-top: 18px; }
+.privacy { margin-top: 36px; color: var(--ink-3); font-size: 0.867rem; max-width: 60ch; }
+.error { color: var(--danger); margin-top: 14px; }
+
+/* Setup */
+.setup { max-width: 1120px; margin: 32px auto 64px; padding: 0 20px; }
+.setup-head { display: flex; align-items: flex-end; gap: 20px; flex-wrap: wrap; margin-bottom: 20px; }
+.setup-head .grow { flex: 1; min-width: 260px; }
+.note { background: var(--navy-soft); border-radius: 8px; padding: 10px 14px; margin: 0 0 16px; color: var(--ink); }
+.field { display: grid; gap: 4px; }
+.field > span { font-weight: 600; font-size: 0.867rem; }
+.input, select.input, textarea.input { border: 1px solid var(--line-2); border-radius: 6px; padding: 7px 10px; background: var(--surface); width: 100%; }
+textarea.input { resize: vertical; }
+.fields-row { display: flex; gap: 16px; flex-wrap: wrap; margin-bottom: 20px; }
+.fields-row .field { min-width: 240px; flex: 1; }
+.coltable-wrap { overflow-x: auto; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; }
+table { border-collapse: collapse; width: 100%; }
+th { text-align: left; font-size: 0.8rem; font-weight: 600; color: var(--ink-2); padding: 10px 12px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+td { padding: 10px 12px; border-bottom: 1px solid var(--line); vertical-align: middle; }
+tr:last-child td { border-bottom: 0; }
+.colname { font-weight: 600; max-width: 240px; overflow-wrap: anywhere; }
+.hint { display: block; font-weight: 400; font-size: 0.8rem; color: var(--ink-3); }
+.example { color: var(--ink-2); max-width: 300px; font-size: 0.867rem; }
+.example span { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.seg { display: inline-flex; border: 1px solid var(--line-2); border-radius: 6px; overflow: hidden; }
+.seg label { position: relative; }
+.seg input { position: absolute; opacity: 0; }
+.seg span { display: block; padding: 5px 11px; font-size: 0.867rem; cursor: pointer; border-left: 1px solid var(--line-2); white-space: nowrap; }
+.seg label:first-child span { border-left: 0; }
+.seg input:checked + span { background: var(--navy); color: #fff; }
+.seg input:focus-visible + span { outline: 2px solid var(--navy); outline-offset: -3px; }
+tr.role-skip td:not(:nth-child(4)) { color: var(--ink-3); }
+.setup-foot { display: flex; gap: 12px; align-items: center; justify-content: flex-end; margin-top: 20px; flex-wrap: wrap; }
+
+/* Workspace */
+.work { display: grid; grid-template-columns: 290px minmax(0, 1fr); min-height: calc(100vh - 100px); }
+.work.full { grid-template-columns: minmax(0, 1fr); }
+.side { border-right: 1px solid var(--line); background: var(--surface); padding: 18px 16px 40px; display: grid; gap: 22px; align-content: start; position: sticky; top: 100px; max-height: calc(100vh - 100px); overflow-y: auto; }
+.side h3 { font-size: 0.8rem; color: var(--ink-2); margin-bottom: 6px; }
+.statuslist { display: grid; gap: 2px; }
+.statuslist button, .taglist button.tagbtn { display: flex; align-items: center; gap: 8px; width: 100%; border: 0; background: none; text-align: left; padding: 6px 8px; border-radius: 6px; cursor: pointer; }
+.statuslist button:hover, .taglist button.tagbtn:hover { background: var(--paper); }
+.statuslist button[aria-pressed="true"], .taglist button.tagbtn[aria-pressed="true"] { background: var(--navy-soft); color: var(--navy); font-weight: 600; }
+.num { margin-left: auto; color: var(--ink-3); font-variant-numeric: tabular-nums; font-weight: 400; }
+.taglist { display: grid; gap: 1px; }
+.tagrowside { display: flex; align-items: center; position: relative; }
+.tagrowside .tagbtn { padding-right: 34px !important; }
+.tagrowside .xbtn { position: absolute; right: 2px; opacity: 0; }
+.tagrowside:hover .xbtn, .tagrowside .xbtn:focus-visible { opacity: 1; }
+.xbtn { border: 0; background: none; width: 26px; height: 26px; border-radius: 5px; cursor: pointer; color: var(--ink-3); display: grid; place-items: center; }
+.xbtn:hover { background: var(--line); color: var(--ink); }
+.bar { height: 3px; background: var(--line); border-radius: 2px; margin-top: 2px; overflow: hidden; }
+.bar i { display: block; height: 100%; background: var(--navy); }
+.tagname { min-width: 0; flex: 1; }
+.tagname .t { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.side .field select, .side .field input { font-size: 0.933rem; }
+.main { padding: 22px 28px 60px; min-width: 0; }
+
+/* Review */
+.review { max-width: 820px; margin: 0 auto; }
+.qbar { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; color: var(--ink-2); }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 22px 26px 20px; }
+.card-q { display: flex; align-items: center; gap: 10px; color: var(--plum); font-weight: 600; font-size: 0.867rem; margin-bottom: 12px; flex-wrap: wrap; }
+.badge { font-size: 0.75rem; font-weight: 600; padding: 2px 8px; border-radius: 999px; background: var(--paper); color: var(--ink-2); border: 1px solid var(--line); }
+.badge.rev { background: var(--navy-soft); color: var(--navy); border-color: transparent; }
+.comment-text { font-family: var(--read); font-size: 1.4rem; line-height: 1.55; white-space: pre-wrap; overflow-wrap: anywhere; max-width: 64ch; }
+.comment-text.sm { font-size: 1.1rem; line-height: 1.5; }
+mark { background: linear-gradient(transparent 14%, var(--mark) 14%, var(--mark) 90%, transparent 90%); color: inherit; padding: 0 1px; }
+.ctx { display: flex; flex-wrap: wrap; gap: 6px 14px; margin-top: 12px; color: var(--ink-2); font-size: 0.867rem; }
+.ctx b { font-weight: 600; color: var(--ink-3); }
+.tagzone { margin-top: 18px; padding-top: 16px; border-top: 1px solid var(--line); display: grid; gap: 12px; }
+.chips { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.chip { display: inline-flex; align-items: center; gap: 6px; border-radius: 999px; padding: 3px 6px 3px 12px; font-size: 0.9rem; border: 1.5px solid var(--navy); cursor: pointer; background: var(--surface); color: var(--navy); line-height: 1.4; }
+.chip.conf { background: var(--navy); color: #fff; }
+.chip.sugg { border-style: dashed; }
+.chip .n { font-size: 0.75rem; opacity: .75; font-variant-numeric: tabular-nums; }
+.chip .x { display: grid; place-items: center; width: 18px; height: 18px; border-radius: 50%; }
+.chip:hover .x { background: rgba(127,127,127,.25); }
+.chip.add { border-color: var(--line-2); color: var(--ink-2); padding: 3px 12px; }
+.chip.add:hover { border-color: var(--navy); color: var(--navy); }
+.chip.add .n { margin-right: 2px; }
+.chips-empty { color: var(--ink-3); font-style: italic; }
+.zlabel { font-size: 0.8rem; font-weight: 600; color: var(--ink-2); min-width: 64px; }
+.addrow { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.addrow .input { width: 240px; }
+.others { margin-top: 16px; font-size: 0.933rem; }
+.others summary { cursor: pointer; color: var(--ink-2); }
+.others dl { margin: 10px 0 0; display: grid; gap: 10px; }
+.others dt { font-weight: 600; font-size: 0.8rem; color: var(--plum); }
+.others dd { margin: 2px 0 0; font-family: var(--read); font-size: 1.02rem; }
+.actions { display: flex; gap: 10px; align-items: center; margin-top: 14px; flex-wrap: wrap; }
+.keys { display: flex; gap: 14px; flex-wrap: wrap; color: var(--ink-3); font-size: 0.8rem; margin-top: 18px; }
+.keys span { display: inline-flex; gap: 5px; align-items: center; }
+.empty { text-align: center; padding: 60px 20px; color: var(--ink-2); display: grid; gap: 14px; justify-items: center; }
+.empty h2 { color: var(--ink); }
+
+/* Browse */
+.browse-head { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin-bottom: 14px; }
+.blist { display: grid; gap: 10px; }
+.bcard { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 14px 18px; display: grid; gap: 10px; }
+.bcard.is-skip { background: transparent; }
+.bcard.is-skip .comment-text { color: var(--ink-3); }
+.bcard .top { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.bcard .top .q { color: var(--plum); font-weight: 600; font-size: 0.8rem; }
+.bcard .foot { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.bcard .foot .input { width: 180px; padding: 4px 8px; font-size: 0.867rem; }
+.bcard .ctx { margin-top: 0; }
+.more { margin-top: 16px; text-align: center; }
+
+/* Tags tab */
+.tagspage { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 28px; max-width: 1240px; margin: 0 auto; }
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; }
+.panel-h { display: flex; align-items: center; gap: 12px; padding: 14px 18px; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
+.panel-b { padding: 16px 18px; display: grid; gap: 12px; }
+.panel + .panel { margin-top: 18px; }
+.ttable td { font-size: 0.933rem; }
+.ttable .terms { color: var(--ink-2); max-width: 340px; }
+.ttable .kind { display: block; font-size: 0.75rem; color: var(--ink-3); }
+.ttable td.num { text-align: right; }
+.ttable .acts { display: flex; gap: 4px; justify-content: flex-end; align-items: center; }
+.ttable select { font-size: 0.8rem; padding: 3px 6px; border: 1px solid var(--line-2); border-radius: 5px; background: var(--surface); max-width: 130px; }
+.wordchips { display: flex; flex-wrap: wrap; gap: 6px; }
+.wchip { display: inline-flex; align-items: center; gap: 2px; background: var(--paper); border: 1px solid var(--line); border-radius: 999px; padding: 1px 2px 1px 10px; font-size: 0.867rem; }
+.wchip .xbtn { width: 22px; height: 22px; }
+.inline { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.inline .input { flex: 1; min-width: 120px; }
+.numinput { width: 80px !important; flex: none !important; }
+
+/* Export */
+.exportpage { max-width: 1040px; margin: 0 auto; display: grid; gap: 18px; }
+.opts { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px 28px; }
+.check { display: flex; gap: 10px; align-items: flex-start; cursor: pointer; }
+.check input { margin-top: 4px; accent-color: var(--navy); }
+.check small { display: block; color: var(--ink-3); }
+.warnbox { background: #FFF7E0; border: 1px solid #F0D58A; border-radius: 8px; padding: 10px 14px; }
+.clouds { display: grid; grid-template-columns: repeat(auto-fit, minmax(420px, 1fr)); gap: 16px; }
+.cloud { border: 1px solid var(--line); border-radius: 8px; overflow: hidden; background: #fff; }
+.cloud canvas { width: 100%; height: auto; display: block; }
+.cloud .cap { display: flex; align-items: center; gap: 10px; padding: 8px 12px; border-top: 1px solid var(--line); background: var(--surface); }
+.dlrow { display: flex; gap: 10px; flex-wrap: wrap; }
+
+/* Dialog */
+dialog { border: 0; border-radius: 12px; padding: 0; width: min(560px, calc(100vw - 32px)); box-shadow: 0 20px 60px rgba(28,37,54,.25); color: var(--ink); }
+dialog::backdrop { background: rgba(28,37,54,.35); }
+dialog form { padding: 22px 24px; display: grid; gap: 14px; }
+.dlg-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 4px; }
+.forms { display: flex; flex-wrap: wrap; gap: 6px; }
+
+.toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: var(--ink); color: #fff; padding: 10px 16px; border-radius: 8px; z-index: 50; font-size: 0.933rem; max-width: calc(100vw - 40px); }
+
+@media (max-width: 900px) {
+  .work { display: flex; flex-direction: column; }
+  .main { order: 1; }
+  .side { order: 2; position: static; max-height: none; border-right: 0; border-top: 1px solid var(--line); }
+  .topbar-in { gap: 10px; padding: 10px 14px; }
+  .topbar-in > .small.muted { display: none; }
+  .tabs { overflow-x: auto; padding: 0 8px; }
+  .tab { white-space: nowrap; }
+  .tagspage { grid-template-columns: minmax(0, 1fr); }
+  .main { padding: 18px 14px 48px; }
+  .card { padding: 18px 16px; }
+  .comment-text { font-size: 1.2rem; }
+  .projname, .savestate { display: none; }
+  .clouds { grid-template-columns: minmax(0, 1fr); }
+}
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
+</style>
+</head>
+<body>
+<header class="topbar" id="topbar"></header>
+<div id="app"></div>
+<dialog id="dlg"></dialog>
+<datalist id="taglist"></datalist>
+<input type="file" id="fileProject" accept=".json,application/json" hidden>
+<input type="file" id="fileCodebook" accept=".json,application/json" hidden>
+
+<script>
+"use strict";
+/* =====================================================================
+   Comment Sorter — tag open-response survey comments, export to Word.
+   Everything runs in the browser. Libraries: SheetJS (read/write Excel),
+   docx (write Word). No AI, no server.
+   ===================================================================== */
+
+/* ---------- Word lists ---------- */
+const CORE_STOP = new Set(("a about above after again against all am an and any are aren arent as at be because been before being below between both but by can cant cannot could couldnt couldve did didnt do does doesnt doing dont down during each etc few for from further get gets got getting had hadnt has hasnt have havent having he hed hes her here heres hers herself him himself his how hows i id ill im ive if in into is isnt it its itself lets me more most mustnt my myself no nor not of off on once only or other ought our ours ourselves out over own same shant she shed shes should shouldnt so some such than that thats the their theirs them themselves then there theres these they theyd theyll theyre theyve this those through to too under until up us very was wasnt we wed well were weve werent what whats when whens where wheres which while who whos whom why whys will with wont would wouldnt wouldve you youd youll youre youve your yours yourself yourselves also just yes yeah oh ok okay may might must shall one two three maybe perhaps even still though although however really quite rather much many lot lots bit little able way ways something anything everyone someone anyone thing things stuff u ur n na nope via per sure yet along go going goes gone make makes made think know knew need want wanted use give gave take took come came put say said tell told seem seemed feel felt lol see saw seen nothing none").split(" "));
+
+const STARTER_EXCLUSIONS = ["session", "workshop", "webinar", "training", "today", "great", "good", "nice", "helpful", "useful", "excellent", "amazing", "fantastic", "awesome", "wonderful", "love", "enjoy", "job", "part", "help", "provide", "overall", "definitely", "especially", "always", "keep"];
+
+const STARTER_TAGS = [
+  { name: "presenter", terms: ["presenter", "speaker", "facilitator"] },
+  { name: "slides", terms: ["slides", "PowerPoint", "slide deck"] },
+  { name: "pace", terms: ["pace", "pacing", "rushed", "too fast", "slow down"] },
+  { name: "audio", terms: ["audio", "sound", "mic", "microphone"] },
+  { name: "examples", terms: ["example", "sample"] },
+  { name: "practice", terms: ["practice", "hands-on", "work time"] },
+  { name: "games", terms: ["game", "Kahoot", "quiz"] },
+  { name: "appreciation", terms: ["thank", "thanks", "kudos", "appreciate", "grateful", "great job", "well done", "great work"] },
+  { name: "eCampus", terms: ["eCampus", "e-campus", "Brightspace", "D2L"] },
+  { name: "recordings", terms: ["recording", "recorded", "video"] },
+  { name: "breakout rooms", terms: ["breakout", "breakout room", "small group"] }
+];
+
+const BLANK_EXACT = new Set(["", "n a", "na", "n", "none", "nothing", "no", "nope", "nah", "not applicable", "no comment", "no comments", "no change", "no changes", "no suggestion", "no suggestions", "no recommendation", "no recommendations", "nothing to add", "nothing to add here", "nothing else", "nothing further", "nothing to say", "nothing at this time", "none at this time", "not at this time", "nothing really", "none really", "not really", "no thanks", "no thank you", "none thank you", "nothing thank you", "cant think of anything", "cant think of any", "i cant think of anything", "i cant think of any", "i dont have anything", "i dont have any", "not sure", "idk", "x", "same", "same as above", "see above", "nothing comes to mind", "none that i can think of", "nothing that i can think of", "no other comments", "no additional comments", "no further comments", "nothing additional", "none so far", "nothing so far"]);
+
+const PALETTES = {
+  cetl: { name: "CETL", colors: ["#002F87", "#1E8EF7", "#93278F", "#FF620B", "#E52626"] },
+  fellows: { name: "Fellows", colors: ["#1B75BB", "#062F87", "#652D90", "#9E1F63"] },
+  navy: { name: "Navy only", colors: ["#002F87"] }
+};
+
+const LS_PROJECT = "commentSorter.project.v1";
+const LS_CODEBOOK = "commentSorter.codebook.v1";
+const DATE_RE = /^\d{1,4}[-/.]\d{1,2}[-/.]\d{1,4}/;
+
+/* ---------- Text engine ---------- */
+function normText(s) {
+  return String(s == null ? "" : s).replace(/[\u2018\u2019\u02BC\u0060\u00B4]/g, "'").replace(/[\u201C\u201D]/g, '"');
+}
+function tokenize(text) {
+  const t = normText(text), out = [];
+  const re = /[A-Za-z0-9\u00C0-\u024F]+(?:'[A-Za-z\u00C0-\u024F]+)*/g;
+  let m;
+  while ((m = re.exec(t))) {
+    const raw = m[0];
+    const low = raw.toLowerCase().replace(/'s$/, "").replace(/'/g, "");
+    out.push({ raw, low, start: m.index, end: m.index + raw.length });
+  }
+  return out;
+}
+function singular(w) {
+  if (w.length <= 3) return w;
+  if (/(ss|us|is|ous)$/.test(w)) return w;
+  if (/ies$/.test(w) && w.length > 4) return w.slice(0, -3) + "y";
+  if (/zzes$/.test(w)) return w.slice(0, -3);
+  if (/(ches|shes|xes|sses)$/.test(w)) return w.slice(0, -2);
+  if (/s$/.test(w)) return w.slice(0, -1);
+  return w;
+}
+function baseCandidates(w) {
+  const c = [], add = (x) => { if (x && x.length >= 3) c.push(x); };
+  let m;
+  if ((m = w.match(/^(.{2,})ing$/))) { const b = m[1]; add(b); add(b + "e"); if (/([bdfglmnprt])\1$/.test(b)) add(b.slice(0, -1)); }
+  else if ((m = w.match(/^(.{2,})ied$/))) { add(m[1] + "y"); }
+  else if ((m = w.match(/^(.{2,})ed$/))) { const b = m[1]; add(b); add(b + "e"); if (/([bdfglmnprt])\1$/.test(b)) add(b.slice(0, -1)); }
+  else if ((m = w.match(/^(.{3,}[st])ion$/))) { add(m[1]); add(m[1] + "e"); }
+  return c;
+}
+/* Word-form grouping: plurals always merge; -ing / -ed / -ion forms merge only
+   when the base word also appears in this data, so unusual words never over-merge. */
+function buildKeyer(lows, splits) {
+  const vocab = new Set();
+  for (const w of lows) vocab.add(singular(w));
+  const cache = new Map();
+  return function key(w) {
+    let k = cache.get(w);
+    if (k !== undefined) return k;
+    const s = singular(w);
+    k = s;
+    if (!splits.has(s)) {
+      for (const b of baseCandidates(s)) { if (b !== s && vocab.has(b) && !splits.has(b + "|" + s)) { k = b; break; } }
+    }
+    cache.set(w, k);
+    return k;
+  };
+}
+function blankKey(text) {
+  return normText(text).toLowerCase().replace(/'/g, "").replace(/[^a-z0-9\s]+/g, " ").replace(/\s+/g, " ").trim();
+}
+function isBlankish(text) {
+  const n = blankKey(text);
+  return BLANK_EXACT.has(n) || /^[0-9\s]*$/.test(n);
+}
+function usableWord(low, key) {
+  if (low.length < 2 || /\d/.test(low)) return false;
+  if (low.length < 3 && !/^[a-z]{2}$/.test(low)) return false;
+  return !(CORE_STOP.has(low) || CORE_STOP.has(key));
+}
+
+/* ---------- Small helpers ---------- */
+const $ = (s, r = document) => r.querySelector(s);
+const esc = (s) => String(s == null ? "" : s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const uid = () => Math.random().toString(36).slice(2, 10);
+const plural = (n, one, many) => `${n.toLocaleString()} ${n === 1 ? one : (many || one + "s")}`;
+function debounce(fn, ms) { let t; return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); }; }
+function capFirst(s) { s = String(s); return /^[a-z][a-z\s]/.test(s) || /^[a-z]$/.test(s) ? s[0].toUpperCase() + s.slice(1) : s; }
+function slug(s) { return String(s || "comments").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 60) || "comments"; }
+function humanize(h) {
+  h = String(h || "").trim();
+  if (/\s/.test(h)) return h;
+  const s = h.replace(/[_\-]+/g, " ").replace(/([a-z0-9])([A-Z])/g, "$1 $2").replace(/([A-Z]+)([A-Z][a-z])/g, "$1 $2").toLowerCase().trim();
+  return s ? s[0].toUpperCase() + s.slice(1) : h;
+}
+function titleFromFile(name) {
+  let n = String(name || "").replace(/\.[^.]+$/, "").replace(/(\s\(\d{1,2}\)|_\d{1,2}_)$/, "");
+  return n.replace(/_/g, " ").replace(/\s+/g, " ").trim();
+}
+function download(blob, name) {
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob); a.download = name;
+  document.body.appendChild(a); a.click();
+  setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+}
+let toastTimer;
+function toast(msg) {
+  let el = $(".toast");
+  if (!el) { el = document.createElement("div"); el.className = "toast"; el.setAttribute("role", "status"); document.body.appendChild(el); }
+  el.textContent = msg; clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.remove(), 3200);
+}
+const ICON_X = '<svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true"><path d="M1.5 1.5l7 7M8.5 1.5l-7 7" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>';
+
+/* ---------- State ---------- */
+let P = null;   // the saved project
+let D = null;   // everything derived from P
+let T = null;   // setup draft
+const UI = {
+  view: "landing", tab: "review",
+  f: { status: "todo", col: "all", tag: null, ctx: {}, q: "" },
+  queue: [], qpos: 0, qkey: "", browseLimit: 60, tagFind: "",
+  save: "saved", err: "", clouds: {}
+};
+const DEFAULT_SETTINGS = { includeSuggested: false, includeUntagged: true, includeContext: true, includeClouds: true, sortTags: "count", palette: "cetl" };
+
+function starterCodebook() {
+  return { exclusions: STARTER_EXCLUSIONS.slice(), tags: STARTER_TAGS.map((t) => ({ id: "t:" + uid(), name: t.name, terms: t.terms.slice() })), splits: [], minCount: null };
+}
+function savedCodebook() {
+  try { const c = JSON.parse(localStorage.getItem(LS_CODEBOOK) || "null"); return c && Array.isArray(c.tags) ? c : null; } catch (e) { return null; }
+}
+
+/* ---------- Reading the workbook ---------- */
+function sheetTable(ws, name) {
+  const empty = { name, headers: [], rows: [], rowNums: [], note: "" };
+  if (!ws || !ws["!ref"]) return empty;
+  const byRow = new Map(); let maxC = -1; const totalRows = new Set();
+  for (const k of Object.keys(ws)) {
+    if (k[0] === "!") continue;
+    const cell = ws[k]; const { r, c } = XLSX.utils.decode_cell(k);
+    if (cell.f && /\b(SUBTOTAL|AGGREGATE)\s*\(/i.test(cell.f)) totalRows.add(r);
+    let v = "";
+    if (cell.w != null) v = String(cell.w);
+    else if (cell.v instanceof Date) v = cell.v.toLocaleString();
+    else if (cell.v != null) v = String(cell.v);
+    v = v.replace(/\r\n?/g, "\n").trim();
+    if (!v) continue;
+    if (!byRow.has(r)) byRow.set(r, new Map());
+    byRow.get(r).set(c, v); if (c > maxC) maxC = c;
+  }
+  const rIdx = [...byRow.keys()].filter((r) => !totalRows.has(r)).sort((a, b) => a - b);
+  if (!rIdx.length) return empty;
+  const grid = rIdx.map((r) => { const m = byRow.get(r), row = []; for (let c = 0; c <= maxC; c++) row.push(m.get(c) || ""); return row; });
+  let hdr = grid[0], start = 1, note = "";
+  if (grid.length > 2 && grid[2].some((v) => /^\{\s*"ImportId"/.test(v))) {
+    hdr = grid[1].map((v, i) => v || grid[0][i]); start = 3;
+    note = "This looks like a Qualtrics export, so the question text is used for column names and the extra header rows are skipped.";
+  }
+  let rows = grid.slice(start), rowNums = rIdx.slice(start).map((r) => r + 1);
+  // drop columns with no header and no data
+  const keep = [];
+  for (let c = 0; c <= maxC; c++) if (hdr[c] || rows.some((r) => r[c])) keep.push(c);
+  const seen = new Map();
+  const headers = keep.map((c) => {
+    let h = hdr[c] || "Column " + XLSX.utils.encode_col(c);
+    const n = (seen.get(h) || 0) + 1; seen.set(h, n);
+    return n > 1 ? `${h} (${n})` : h;
+  });
+  rows = rows.map((r) => keep.map((c) => r[c]));
+  return { name, headers, rows, rowNums, note };
+}
+function colStats(rows, i) {
+  const vals = rows.map((r) => r[i]).filter(Boolean);
+  const real = vals.filter((v) => !isBlankish(v)); // "N/A" and "Nothing" shouldn't make a comment column look repetitive
+  const n = vals.length, u = new Set(vals.map((v) => v.toLowerCase())), ru = new Set(real.map((v) => v.toLowerCase()));
+  const share = (arr, test) => (arr.length ? arr.filter(test).length / arr.length : 0);
+  const s = {
+    n, uniq: u.size,
+    avg: real.length ? real.reduce((a, v) => a + v.length, 0) / real.length : 0,
+    num: share(vals, (v) => /^-?[\d,]+(\.\d+)?%?$/.test(v)),
+    date: share(vals, (v) => DATE_RE.test(v)),
+    sp: share(real, (v) => /\s/.test(v)),
+    example: real[0] || vals[0] || ""
+  };
+  const varied = ru.size / Math.max(1, real.length) >= 0.55 || (ru.size >= 40 && s.avg >= 20);
+  s.comment = real.length > 0 && s.num < 0.5 && s.date < 0.5 && s.avg >= 12 && s.sp >= 0.35 && varied;
+  s.categorical = n > 0 && !s.comment && s.uniq > 1 && s.uniq <= Math.max(12, n * 0.2);
+  s.likert = s.categorical && [...u].some((v) => /agree|disagree|satisf|likely|neutral/.test(v));
+  return s;
+}
+function defaultLabels(header, s) {
+  const h = humanize(header);
+  const comment = h.length > 70 ? h.slice(0, 67).trim() + "…" : h;
+  const context = s.categorical && !s.likert && s.avg > 12 ? "" : (h.length > 40 ? h.slice(0, 37).trim() + "…" : h);
+  return { comment, context };
+}
+function draftFromSheet(sheet, prevCols) {
+  const cols = sheet.headers.map((h, i) => {
+    const s = colStats(sheet.rows, i), d = defaultLabels(h, s);
+    const prev = prevCols && prevCols[i];
+    return { role: prev ? prev.role : (s.comment ? "comment" : "skip"), label: prev ? prev.label : d.comment, edited: !!prev, d, s };
+  });
+  return cols;
+}
+
+async function openFile(file) {
+  UI.err = "";
+  try {
+    if (/\.json$/i.test(file.name)) return openProjectFile(file);
+    if (!window.XLSX) throw new Error("The Excel reader didn't load. Check your internet connection and reload the page.");
+    const buf = await file.arrayBuffer();
+    const wb = XLSX.read(buf, { type: "array", cellDates: true });
+    const sheets = wb.SheetNames.map((n) => sheetTable(wb.Sheets[n], n)).filter((s) => s.headers.length && s.rows.length);
+    if (!sheets.length) throw new Error("No data found in that file. Check that the responses are on a worksheet with a header row.");
+    const cb = savedCodebook();
+    T = { fileName: file.name, sheets, sheetIdx: 0, title: titleFromFile(file.name), cols: draftFromSheet(sheets[0]), codebook: cb ? "saved" : "starter", editing: false };
+    UI.view = "setup"; render();
+  } catch (e) { UI.err = e.message || String(e); render(); }
+}
+async function openProjectFile(file) {
+  try {
+    const obj = JSON.parse(await file.text());
+    if (obj.app === "comment-sorter-codebook") { UI.err = "That's a codebook file. Open a survey file first, then load the codebook from the Tags tab."; render(); return; }
+    if (obj.app !== "comment-sorter" || !Array.isArray(obj.rows)) throw new Error("That file isn't a Comment Sorter project.");
+    P = obj; P.settings = Object.assign({}, DEFAULT_SETTINGS, P.settings || {}); P.status = P.status || {};
+    resetFilters(); derive(); UI.view = "work"; UI.tab = "review"; saveNow(); render();
+    toast("Project opened");
+  } catch (e) { UI.err = e.message || String(e); render(); }
+}
+
+function startProject() {
+  const sheet = T.sheets[T.sheetIdx];
+  const cols = T.cols.map((c) => ({ role: c.role, label: (c.label || "").trim() || (c.role === "comment" ? c.d.comment : "") }));
+  if (T.editing && P) {
+    P.cols = cols; P.title = T.title.trim() || P.title;
+  } else {
+    const cb = T.codebook === "saved" && savedCodebook() ? JSON.parse(JSON.stringify(savedCodebook())) : starterCodebook();
+    cb.minCount = null;
+    P = { app: "comment-sorter", version: 1, fileName: T.fileName, title: T.title.trim() || titleFromFile(T.fileName), sheetName: sheet.name,
+      headers: sheet.headers, rows: sheet.rows, rowNums: sheet.rowNums, note: sheet.note, cols, status: {}, codebook: cb,
+      settings: Object.assign({}, DEFAULT_SETTINGS), created: new Date().toISOString() };
+  }
+  T = null; resetFilters(); derive(); UI.view = "work"; UI.tab = "review"; saveNow(); render();
+}
+function editColumns() {
+  const sheet = { name: P.sheetName, headers: P.headers, rows: P.rows, rowNums: P.rowNums, note: P.note };
+  T = { fileName: P.fileName, sheets: [sheet], sheetIdx: 0, title: P.title, cols: draftFromSheet(sheet, P.cols), codebook: "keep", editing: true };
+  UI.view = "setup"; render();
+}
+function resetFilters() { UI.f = { status: "todo", col: "all", tag: null, ctx: {}, q: "" }; UI.qkey = ""; UI.browseLimit = 60; UI.clouds = {}; }
+
+/* ---------- Derivation ---------- */
+const TOK_CACHE = new Map();
+function commentCols() { return P.cols.map((c, idx) => ({ ...c, idx })).filter((c) => c.role === "comment"); }
+function contextCols() { return P.cols.map((c, idx) => ({ ...c, idx })).filter((c) => c.role === "context"); }
+function colLabel(idx) { const c = P.cols[idx]; return (c && c.label) || humanize(P.headers[idx]); }
+
+function derive() {
+  const cb = P.codebook;
+  const cCols = commentCols();
+  const comments = [];
+  cCols.forEach((col, order) => {
+    P.rows.forEach((row, r) => {
+      const text = (row[col.idx] || "").trim(); if (!text) return;
+      const id = r + ":" + col.idx;
+      let toks = TOK_CACHE.get(id + "\u0000" + text);
+      if (!toks) { toks = tokenize(text); TOK_CACHE.set(id + "\u0000" + text, toks); }
+      comments.push({ id, r, c: col.idx, order, text, toks, blank: isBlankish(text) });
+    });
+  });
+  const lows = []; comments.forEach((c) => c.toks.forEach((t) => lows.push(t.low)));
+  const key = buildKeyer(lows, new Set(cb.splits || []));
+  comments.forEach((c) => { c.keys = c.toks.map((t) => key(t.low)); });
+  const seqOf = (s) => tokenize(s).map((t) => key(t.low));
+
+  // exclusions
+  const exUni = new Set(), exPhr = new Set();
+  for (const e of cb.exclusions) { const s = seqOf(e); if (s.length === 1) exUni.add(s[0]); else if (s.length > 1) exPhr.add(s.join(" ")); }
+
+  // defined tags
+  const defUni = new Map(), defPhr = new Map(), absorbedBy = new Map();
+  cb.tags.forEach((t) => {
+    t.terms.forEach((term) => {
+      const s = seqOf(term); if (!s.length) return;
+      const jk = s.join(" ");
+      if (!absorbedBy.has(jk)) absorbedBy.set(jk, t.id);
+      if (s.length === 1) { if (!defUni.has(s[0])) defUni.set(s[0], new Set()); defUni.get(s[0]).add(t.id); }
+      else { if (!defPhr.has(s[0])) defPhr.set(s[0], []); defPhr.get(s[0]).push({ seq: s, id: t.id }); }
+    });
+  });
+
+  // frequency stats over non-blank comments
+  const live = comments.filter((c) => !c.blank);
+  const uniDF = new Map(), forms = new Map(), casing = new Map(), biDF = new Map(), biForms = new Map();
+  const bump = (m, k, n = 1) => m.set(k, (m.get(k) || 0) + n);
+  for (const c of live) {
+    const sU = new Set(), sB = new Set();
+    c.toks.forEach((t, i) => {
+      const k = c.keys[i];
+      const sentStart = i === 0 || /[.!?\n:;\u2022\-\u2013\u2014)]\s*$/.test(c.text.slice(c.toks[i - 1].end, t.start));
+      const cs = sentStart && /^[A-Z][a-z]+$/.test(t.raw) ? t.low : t.raw;
+      if (!casing.has(t.low)) casing.set(t.low, new Map()); bump(casing.get(t.low), cs.replace(/'s$/i, "").replace(/'/g, ""));
+      if (usableWord(t.low, k) && !exUni.has(k) && !exUni.has(t.low)) {
+        sU.add(k); if (!forms.has(k)) forms.set(k, new Map()); bump(forms.get(k), t.low);
+      }
+      if (i + 1 < c.toks.length) {
+        const t2 = c.toks[i + 1], k2 = c.keys[i + 1];
+        const gap = c.text.slice(t.end, t2.start);
+        if (/^[\s\-/]*$/.test(gap) && k !== k2 && usableWord(t.low, k) && usableWord(t2.low, k2) && !(exUni.has(k) && exUni.has(k2))) {
+          const jk = k + " " + k2; sB.add(jk); if (!biForms.has(jk)) biForms.set(jk, new Map()); bump(biForms.get(jk), t.low + " " + t2.low);
+        }
+      }
+    });
+    sU.forEach((k) => bump(uniDF, k)); sB.forEach((k) => bump(biDF, k));
+  }
+  const autoMin = Math.max(3, Math.round(live.length * 0.02));
+  const minCount = cb.minCount || autoMin;
+
+  const topOf = (m) => [...m.entries()].sort((a, b) => b[1] - a[1] || a[0].length - b[0].length)[0][0];
+  const displayWord = (low) => {
+    const cm = casing.get(low); if (!cm) return low;
+    const best = [...cm.entries()].sort((a, b) => b[1] - a[1])[0];
+    if (best[0].toLowerCase() !== low) return low;
+    // a plain capitalized word needs to be clearly more common than its lowercase form (proper nouns like "Kahoot")
+    if (/^[A-Z][a-z]+$/.test(best[0]) && (cm.get(low) || 0) * 2 > best[1]) return low;
+    return best[0];
+  };
+  const tags = new Map();
+  const autoUni = new Map(), autoBi = new Map();
+  const biCands = [...biDF.entries()].filter(([jk, n]) => n >= minCount && !absorbedBy.has(jk) && !exPhr.has(jk));
+  const hideUni = new Set();
+  for (const [jk, n] of biCands) for (const k of jk.split(" ")) if (uniDF.get(k) && n >= 0.7 * uniDF.get(k)) hideUni.add(k);
+  for (const [k, n] of uniDF) {
+    if (n < minCount || absorbedBy.has(k) || hideUni.has(k)) continue;
+    const f = topOf(forms.get(k));
+    const id = "w:" + k;
+    tags.set(id, { id, kind: "auto", name: displayWord(f), terms: [f], forms: [...forms.get(k).entries()].sort((a, b) => b[1] - a[1]), key: k });
+    autoUni.set(k, id);
+  }
+  for (const [jk, n] of biCands) {
+    const f = topOf(biForms.get(jk));
+    const id = "w:" + jk;
+    tags.set(id, { id, kind: "auto", name: f.split(" ").map(displayWord).join(" "), terms: [f], forms: [], key: jk, phrase: true });
+    autoBi.set(jk, id);
+  }
+  cb.tags.forEach((t) => tags.set(t.id, { id: t.id, kind: "defined", name: t.name, terms: t.terms.slice() }));
+
+  // keep statuses consistent: absorbed words move to the tag that absorbed them; deleted tags drop out
+  let changed = false;
+  for (const s of Object.values(P.status)) {
+    for (const arr of ["c", "r"]) {
+      if (!s[arr] || !s[arr].length) continue;
+      const out = [];
+      for (let id of s[arr]) {
+        if (id.startsWith("w:") && absorbedBy.has(id.slice(2))) { id = absorbedBy.get(id.slice(2)); changed = true; }
+        if (id.startsWith("t:") && !tags.has(id)) { changed = true; continue; }
+        if (!out.includes(id)) out.push(id);
+      }
+      s[arr] = out;
+    }
+    if (s.c && s.r) { const before = s.r.length; s.r = s.r.filter((id) => !s.c.includes(id)); if (s.r.length !== before) changed = true; }
+  }
+  // orphans: confirmed word tags that no longer come from the frequent-word list
+  for (const s of Object.values(P.status)) for (const id of s.c || []) {
+    if (!tags.has(id) && id.startsWith("w:")) {
+      const k = id.slice(2), f = forms.get(k) ? topOf(forms.get(k)) : k;
+      tags.set(id, { id, kind: "auto", orphan: true, name: k.includes(" ") ? k : displayWord(f), terms: [f], forms: [], key: k, phrase: k.includes(" ") });
+    }
+  }
+
+  // matches per comment
+  for (const c of comments) {
+    const m = new Map();
+    const add = (id, a, b) => { if (!m.has(id)) m.set(id, []); m.get(id).push([a, b]); };
+    const K = c.keys;
+    for (let i = 0; i < K.length; i++) {
+      const k = K[i];
+      if (autoUni.has(k) && usableWord(c.toks[i].low, k)) add(autoUni.get(k), i, i);
+      if (defUni.has(k)) defUni.get(k).forEach((id) => add(id, i, i));
+      if (i + 1 < K.length && autoBi.has(k + " " + K[i + 1]) && /^[\s\-/]*$/.test(c.text.slice(c.toks[i].end, c.toks[i + 1].start))) add(autoBi.get(k + " " + K[i + 1]), i, i + 1);
+      if (defPhr.has(k)) for (const { seq, id } of defPhr.get(k)) {
+        if (i + seq.length <= K.length && seq.every((s, j) => K[i + j] === s)) add(id, i, i + seq.length - 1);
+      }
+    }
+    c.matches = m;
+  }
+  const byId = new Map(comments.map((c) => [c.id, c]));
+  D = { comments, byId, tags, autoMin, minCount, liveCount: live.length, key, exUni };
+  recount();
+  refreshDatalist();
+  if (changed) saveSoon();
+}
+
+function st(id) { return P.status[id] || {}; }
+function stw(id) { return P.status[id] || (P.status[id] = {}); }
+function isSkipped(c) { const s = st(c.id); return s.s === true || (s.s !== false && c.blank); }
+function tagsOf(c) {
+  const s = st(c.id), conf = (s.c || []).filter((id) => D.tags.has(id)), rej = s.r || [];
+  const sugg = [...c.matches.keys()].filter((id) => !conf.includes(id) && !rej.includes(id) && D.tags.has(id));
+  return { conf, sugg };
+}
+function hasTag(c, id, includeSugg = true) {
+  const s = st(c.id);
+  if ((s.c || []).includes(id)) return true;
+  return includeSugg && c.matches.has(id) && !(s.r || []).includes(id);
+}
+function recount() {
+  const counts = new Map();
+  for (const c of D.comments) {
+    if (isSkipped(c)) continue;
+    const { conf, sugg } = tagsOf(c);
+    for (const [list, kind] of [[conf, "c"], [sugg, "s"]]) for (const id of list) {
+      if (!counts.has(id)) counts.set(id, { c: 0, s: 0, col: new Map() });
+      const o = counts.get(id); o[kind]++;
+      if (!o.col.has(c.c)) o.col.set(c.c, { c: 0, s: 0 });
+      o.col.get(c.c)[kind]++;
+    }
+  }
+  D.counts = counts;
+}
+function tagCount(id, col) {
+  const o = D.counts.get(id); if (!o) return { c: 0, s: 0, t: 0 };
+  const x = col == null || col === "all" ? o : (o.col.get(+col) || { c: 0, s: 0 });
+  return { c: x.c, s: x.s, t: x.c + x.s };
+}
+function refreshDatalist() {
+  const dl = $("#taglist"); if (!dl || !D) return;
+  const names = [...new Set([...D.tags.values()].map((t) => t.name))].sort((a, b) => a.localeCompare(b));
+  dl.innerHTML = names.map((n) => `<option value="${esc(n)}"></option>`).join("");
+}
+function findTagByName(name) {
+  const n = name.trim().toLowerCase(); if (!n) return null;
+  for (const t of D.tags.values()) if (t.name.toLowerCase() === n) return t;
+  for (const t of D.tags.values()) if (t.terms.some((x) => x.toLowerCase() === n)) return t;
+  return null;
+}
+
+/* ---------- Filtering & queue ---------- */
+function passes(c, f, ignore = {}) {
+  if (f.col !== "all" && c.c !== +f.col) return false;
+  if (!ignore.status) {
+    const sk = isSkipped(c), s = st(c.id);
+    if (f.status === "todo" && (sk || s.v)) return false;
+    if (f.status === "reviewed" && (sk || !s.v)) return false;
+    if (f.status === "skipped" && !sk) return false;
+    if (f.status === "untagged") { if (sk) return false; const t = tagsOf(c); if (t.conf.length || t.sugg.length) return false; }
+  }
+  for (const [ci, val] of Object.entries(f.ctx)) if (val !== "" && (P.rows[c.r][ci] || "") !== val) return false;
+  if (!ignore.tag && f.tag && !hasTag(c, f.tag)) return false;
+  if (f.q && !c.text.toLowerCase().includes(f.q.toLowerCase())) return false;
+  return true;
+}
+function filtered() { return D.comments.filter((c) => passes(c, UI.f)); }
+function buildQueue(keepId) {
+  UI.queue = filtered().map((c) => c.id);
+  UI.qkey = JSON.stringify(UI.f);
+  const i = keepId ? UI.queue.indexOf(keepId) : -1;
+  UI.qpos = i >= 0 ? i : 0;
+}
+
+/* ---------- Status actions ---------- */
+function confirmAll(c) {
+  const s = stw(c.id), { conf, sugg } = tagsOf(c);
+  s.c = [...conf, ...sugg]; s.v = 1;
+}
+function removeTag(c, id) {
+  const s = stw(c.id);
+  s.c = (s.c || []).filter((x) => x !== id);
+  if (c.matches.has(id)) { s.r = s.r || []; if (!s.r.includes(id)) s.r.push(id); }
+}
+function addTag(c, id) {
+  const s = stw(c.id);
+  s.c = s.c || []; if (!s.c.includes(id)) s.c.push(id);
+  s.r = (s.r || []).filter((x) => x !== id);
+}
+function toggleSkip(c) { const s = stw(c.id); s.s = !isSkipped(c); }
+function changed(opts = {}) {
+  if (opts.derive) derive(); else recount();
+  saveSoon(); render();
+}
+function tagFromInput(value) {
+  const name = value.trim(); if (!name) return null;
+  const hit = findTagByName(name); if (hit) return hit.id;
+  const t = { id: "t:" + uid(), name, terms: [name] };
+  P.codebook.tags.push(t); derive();
+  return t.id;
+}
+
+/* ---------- Codebook actions ---------- */
+function defOf(id) { return P.codebook.tags.find((t) => t.id === id); }
+function ensureDefined(id) {
+  if (id.startsWith("t:")) return defOf(id);
+  const t = D.tags.get(id);
+  const def = { id: "t:" + uid(), name: t.name, terms: [t.terms[0]] };
+  P.codebook.tags.push(def);
+  // excluded words that were confirmed by hand: lift the exclusion so the new tag keeps working
+  P.codebook.exclusions = P.codebook.exclusions.filter((e) => D.key(e.toLowerCase()) !== t.key);
+  remapStatus(id, def.id);
+  return def;
+}
+function remapStatus(from, to) {
+  for (const s of Object.values(P.status)) for (const arr of ["c", "r"]) {
+    if (!s[arr] || !s[arr].includes(from)) continue;
+    s[arr] = [...new Set(s[arr].map((x) => (x === from ? to : x)))];
+  }
+  for (const s of Object.values(P.status)) if (s.c && s.r) s.r = s.r.filter((x) => !s.c.includes(x));
+}
+function mergeTags(fromId, intoId) {
+  if (fromId === intoId) return;
+  const from = D.tags.get(fromId), into = ensureDefined(intoId);
+  if (fromId.startsWith("t:")) {
+    const fd = defOf(fromId);
+    into.terms = [...new Set([...into.terms, ...fd.terms])];
+    P.codebook.tags = P.codebook.tags.filter((t) => t.id !== fromId);
+    remapStatus(fromId, into.id);
+  } else {
+    into.terms = [...new Set([...into.terms, from.terms[0]])];
+    P.codebook.exclusions = P.codebook.exclusions.filter((e) => D.key(e.toLowerCase()) !== from.key);
+    remapStatus(fromId, into.id);
+  }
+  if (UI.f.tag === fromId || UI.f.tag === intoId) UI.f.tag = into.id;
+  UI.clouds = {};
+  changed({ derive: true });
+  toast(`Merged “${from.name}” into “${into.name}”`);
+}
+function deleteTag(id) {
+  const t = D.tags.get(id); if (!t) return;
+  const n = tagCount(id).c;
+  const msg = t.kind === "auto"
+    ? `Exclude “${t.name}” from tagging?${n ? ` It will also be removed from the ${plural(n, "comment")} where you confirmed it.` : ""}`
+    : `Delete the tag “${t.name}”?${n ? ` It will be removed from ${plural(n, "comment")}.` : ""}`;
+  if (!confirm(msg)) return;
+  if (t.kind === "auto") { if (!P.codebook.exclusions.map((e) => e.toLowerCase()).includes(t.terms[0].toLowerCase())) P.codebook.exclusions.push(t.terms[0]); }
+  else P.codebook.tags = P.codebook.tags.filter((x) => x.id !== id);
+  for (const s of Object.values(P.status)) { if (s.c) s.c = s.c.filter((x) => x !== id); if (s.r) s.r = s.r.filter((x) => x !== id); }
+  if (UI.f.tag === id) UI.f.tag = null;
+  UI.clouds = {};
+  changed({ derive: true });
+}
+function excludeWord(id) {
+  const t = D.tags.get(id); if (!t || t.kind !== "auto") return;
+  const n = tagCount(id).c;
+  if (n && !confirm(`“${t.name}” is confirmed on ${plural(n, "comment")}. Exclude it and remove it from those comments?`)) return;
+  P.codebook.exclusions.push(t.terms[0]);
+  for (const s of Object.values(P.status)) { if (s.c) s.c = s.c.filter((x) => x !== id); if (s.r) s.r = s.r.filter((x) => x !== id); }
+  if (UI.f.tag === id) UI.f.tag = null;
+  UI.clouds = {};
+  changed({ derive: true });
+  toast(`“${t.name}” won't be used for tagging`);
+}
+function parseTerms(s) { return [...new Set(String(s).split(/[\n,;]+/).map((x) => x.trim()).filter(Boolean))]; }
+
+/* ---------- Saving ---------- */
+function saveNow() {
+  if (!P) return;
+  try {
+    localStorage.setItem(LS_PROJECT, JSON.stringify(P));
+    const { exclusions, tags, splits } = P.codebook;
+    localStorage.setItem(LS_CODEBOOK, JSON.stringify({ exclusions, tags, splits }));
+    UI.save = "saved";
+  } catch (e) { UI.save = "error"; }
+  renderTopbar();
+}
+const saveSoon = debounce(saveNow, 500);
+function downloadProject() {
+  download(new Blob([JSON.stringify(P)], { type: "application/json" }), `${slug(P.title)}-tagging-project.json`);
+}
+function downloadCodebook() {
+  const { exclusions, tags, splits } = P.codebook;
+  const obj = { app: "comment-sorter-codebook", version: 1, saved: new Date().toISOString(), exclusions, tags: tags.map(({ name, terms }) => ({ name, terms })), splits };
+  download(new Blob([JSON.stringify(obj, null, 2)], { type: "application/json" }), `comment-sorter-codebook.json`);
+}
+async function loadCodebook(file) {
+  try {
+    const obj = JSON.parse(await file.text());
+    if (obj.app !== "comment-sorter-codebook") throw new Error("That file isn't a codebook.");
+    const cb = P.codebook;
+    const exl = new Set(cb.exclusions.map((e) => e.toLowerCase()));
+    (obj.exclusions || []).forEach((e) => { if (!exl.has(e.toLowerCase())) cb.exclusions.push(e); });
+    let added = 0;
+    (obj.tags || []).forEach((t) => {
+      const hit = cb.tags.find((x) => x.name.toLowerCase() === String(t.name).toLowerCase());
+      if (hit) hit.terms = [...new Set([...hit.terms, ...(t.terms || [])])];
+      else { cb.tags.push({ id: "t:" + uid(), name: t.name, terms: (t.terms || []).slice() }); added++; }
+    });
+    cb.splits = [...new Set([...(cb.splits || []), ...(obj.splits || [])])];
+    UI.clouds = {};
+    changed({ derive: true });
+    toast(`Codebook loaded: ${plural(added, "new tag")}, ${plural((obj.exclusions || []).length, "excluded word")}`);
+  } catch (e) { alert(e.message || String(e)); }
+}
+
+/* ---------- Rendering ---------- */
+function render() {
+  renderTopbar();
+  const app = $("#app");
+  if (UI.view === "landing") app.innerHTML = viewLanding();
+  else if (UI.view === "setup") app.innerHTML = viewSetup();
+  else app.innerHTML = viewWork();
+  if (UI.view === "work" && UI.tab === "export") drawAllClouds();
+}
+function renderTopbar() {
+  const tb = $("#topbar");
+  const logo = '<svg width="22" height="22" viewBox="0 0 22 22" aria-hidden="true"><rect x="2" y="4" width="18" height="3" rx="1.5" fill="#002F87"/><rect x="2" y="9.5" width="12" height="3" rx="1.5" fill="#FFD34D"/><rect x="2" y="15" width="15" height="3" rx="1.5" fill="#93278F"/></svg>';
+  if (!P || UI.view !== "work") { tb.innerHTML = `<div class="topbar-in"><div class="brand">${logo}Comment Sorter</div></div>`; return; }
+  const total = D.comments.length, skipped = D.comments.filter(isSkipped).length;
+  const rev = D.comments.filter((c) => !isSkipped(c) && st(c.id).v).length;
+  const active = total - skipped;
+  const tabs = [["review", "Review"], ["browse", "Browse"], ["tags", "Tags"], ["export", "Export"]];
+  tb.innerHTML = `
+  <div class="topbar-in">
+    <div class="brand">${logo}Comment Sorter</div>
+    <div class="projname" title="${esc(P.fileName)}">${esc(P.title)}</div>
+    <div class="spacer"></div>
+    <span class="savestate ${UI.save === "error" ? "warn" : ""}">${UI.save === "error" ? "Autosave is off: this browser's storage is full. Download a project file to keep your work." : "Saved in this browser"}</span>
+    <span class="small muted" style="white-space:nowrap">${rev.toLocaleString()} of ${active.toLocaleString()} reviewed</span>
+    <details class="menu">
+      <summary class="btn sm">Project</summary>
+      <div class="menu-list">
+        <button data-act="dl-project">Download project file</button>
+        <button data-act="open-project">Open a project file</button>
+        <hr>
+        <button data-act="edit-columns">Change columns</button>
+        <button data-act="start-over">Start over with a new file</button>
+      </div>
+    </details>
+  </div>
+  <div class="progress" aria-hidden="true"><span class="p-rev" style="width:${total ? (rev / total) * 100 : 0}%"></span><span class="p-skip" style="width:${total ? (skipped / total) * 100 : 0}%"></span></div>
+  <div class="tabs" role="tablist">${tabs.map(([k, l]) => `<button class="tab" role="tab" aria-selected="${UI.tab === k}" data-act="tab" data-tab="${k}">${l}${k === "review" ? `<span class="count">${(active - rev).toLocaleString()} left</span>` : ""}</button>`).join("")}</div>`;
+}
+
+function viewLanding() {
+  let saved = null;
+  try { saved = JSON.parse(localStorage.getItem(LS_PROJECT) || "null"); } catch (e) { saved = null; }
+  let resume = "";
+  if (saved && saved.app === "comment-sorter") {
+    const n = Object.values(saved.status || {}).filter((s) => s.v).length;
+    resume = `<div class="resume"><div class="grow"><strong>${esc(saved.title)}</strong><div class="small muted">${esc(saved.fileName)}. ${plural(n, "comment")} reviewed so far.</div></div>
+      <button class="btn primary" data-act="resume">Resume</button><button class="btn quiet danger" data-act="discard">Discard</button></div>`;
+  }
+  return `<section class="landing">
+    <h1>Sort survey comments into tags</h1>
+    <p class="lede">Upload a survey export, pick the open-response columns, and tag each comment. Frequent words become suggested tags you can confirm, change, or ignore. When you're done, export a Word document grouped by tag.</p>
+    <label class="drop" id="drop">
+      <input type="file" id="fileMain" accept=".xlsx,.xls,.csv,.json">
+      <strong>Choose a survey file</strong>
+      <span class="muted">or drop an Excel or CSV file here</span>
+    </label>
+    ${UI.err ? `<p class="error" role="alert">${esc(UI.err)}</p>` : ""}
+    ${resume}
+    <p class="alt"><button class="linkbtn" data-act="open-project">Open a saved project file</button></p>
+    <p class="privacy">Your file never leaves this browser. Nothing is uploaded, and no AI is involved. Progress saves automatically in this browser, and you can download a project file to move your work to another computer.</p>
+  </section>`;
+}
+
+function viewSetup() {
+  const sheet = T.sheets[T.sheetIdx];
+  const nComment = T.cols.filter((c) => c.role === "comment").length;
+  const rows = T.cols.map((c, i) => {
+    const s = c.s;
+    const hint = s.comment ? "Looks like open responses" : s.categorical ? "Good for context" : "";
+    const roles = [["comment", "Comments"], ["context", "Context"], ["skip", "Don't use"]];
+    return `<tr class="role-${c.role}">
+      <td class="colname">${esc(sheet.headers[i]).replace(/([a-z])([A-Z])/g, "$1<wbr>$2")}${hint ? `<span class="hint">${hint}</span>` : ""}</td>
+      <td class="example"><span>${esc(s.example)}</span></td>
+      <td class="num" style="text-align:right">${s.n.toLocaleString()}</td>
+      <td><div class="seg" role="radiogroup" aria-label="Use ${esc(sheet.headers[i])} as">${roles.map(([v, l]) => `<label><input type="radio" name="role${i}" value="${v}" data-chg="role" data-i="${i}" ${c.role === v ? "checked" : ""}><span>${l}</span></label>`).join("")}</div></td>
+      <td>${c.role === "skip" ? "" : `<input class="input" data-inp="label" data-i="${i}" value="${esc(c.label)}" aria-label="Label for ${esc(sheet.headers[i])}" placeholder="${c.role === "comment" ? "Label for this question" : "Optional short label"}">`}</td>
+    </tr>`;
+  }).join("");
+  const cb = savedCodebook();
+  return `<section class="setup">
+    <div class="setup-head">
+      <div class="grow"><h1>${T.editing ? "Change columns" : "Set up columns"}</h1>
+      <p class="muted" style="margin-top:6px">${esc(T.fileName)}: ${plural(sheet.rows.length, "response")}.</p></div>
+    </div>
+    ${sheet.note ? `<p class="note">${esc(sheet.note)}</p>` : ""}
+    <div class="fields-row">
+      <label class="field"><span>Title for the report</span><input class="input" data-inp="title" value="${esc(T.title)}"></label>
+      ${T.sheets.length > 1 ? `<label class="field"><span>Worksheet</span><select class="input" data-chg="sheet">${T.sheets.map((s, i) => `<option value="${i}" ${i === T.sheetIdx ? "selected" : ""}>${esc(s.name)} (${plural(s.rows.length, "row")})</option>`).join("")}</select></label>` : ""}
+      ${!T.editing && cb ? `<label class="field"><span>Tags and excluded words</span><select class="input" data-chg="codebook"><option value="saved" ${T.codebook === "saved" ? "selected" : ""}>Continue with my tags from last time</option><option value="starter" ${T.codebook === "starter" ? "selected" : ""}>Start fresh with the starter set</option></select></label>` : ""}
+    </div>
+    <p class="muted" style="margin-bottom:12px"><strong>Comments</strong> columns get tagged; each becomes its own section in the Word document, using the label you give it. <strong>Context</strong> columns appear alongside each comment and can be used as filters. Leave a context label blank to show just the value.</p>
+    <div class="coltable-wrap"><table>
+      <thead><tr><th>Column</th><th>Example</th><th style="text-align:right">Responses</th><th>Use as</th><th>Label</th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table></div>
+    <div class="setup-foot">
+      ${T.editing ? `<button class="btn" data-act="cancel-setup">Cancel</button>` : `<button class="btn quiet" data-act="cancel-setup">Choose a different file</button>`}
+      <button class="btn primary" data-act="start" ${nComment ? "" : "disabled"}>${T.editing ? "Save columns" : "Start tagging"}</button>
+    </div>
+    ${nComment ? "" : `<p class="muted small" style="text-align:right;margin-top:8px">Choose at least one comments column to continue.</p>`}
+  </section>`;
+}
+
+function viewWork() {
+  const sideTabs = UI.tab === "review" || UI.tab === "browse";
+  let main = "";
+  if (UI.tab === "review") main = viewReview();
+  else if (UI.tab === "browse") main = viewBrowse();
+  else if (UI.tab === "tags") main = viewTags();
+  else main = viewExport();
+  return `<div class="work ${sideTabs ? "" : "full"}">${sideTabs ? `<aside class="side" aria-label="Filters">${viewSide()}</aside>` : ""}<main class="main" id="main">${main}</main></div>`;
+}
+
+function viewSide() {
+  const f = UI.f;
+  const base = D.comments.filter((c) => passes(c, f, { status: true }));
+  const cnt = { todo: 0, untagged: 0, reviewed: 0, skipped: 0, all: base.length };
+  for (const c of base) {
+    const sk = isSkipped(c), s = st(c.id);
+    if (sk) { cnt.skipped++; continue; }
+    if (s.v) cnt.reviewed++; else cnt.todo++;
+    const t = tagsOf(c); if (!t.conf.length && !t.sugg.length) cnt.untagged++;
+  }
+  const statuses = [["todo", "To review"], ["untagged", "Untagged"], ["reviewed", "Reviewed"], ["skipped", "Skipped"], ["all", "All comments"]];
+  const cCols = commentCols();
+  const qSel = cCols.length > 1 ? `<label class="field"><span>Question</span><select class="input" data-chg="fcol"><option value="all">All questions</option>${cCols.map((c) => `<option value="${c.idx}" ${String(f.col) === String(c.idx) ? "selected" : ""}>${esc(colLabel(c.idx))}</option>`).join("")}</select></label>` : "";
+  const ctxSel = contextCols().map((cc) => {
+    const vals = new Map();
+    D.comments.forEach((c) => { if (f.col === "all" || c.c === +f.col) { const v = P.rows[c.r][cc.idx] || ""; if (v) vals.set(v, (vals.get(v) || 0) + 1); } });
+    if (vals.size < 2 || vals.size > 40) return "";
+    const cur = f.ctx[cc.idx] || "";
+    return `<label class="field"><span>${esc(cc.label || humanize(P.headers[cc.idx]))}</span><select class="input" data-chg="fctx" data-i="${cc.idx}"><option value="">Any</option>${[...vals.entries()].sort((a, b) => a[0].localeCompare(b[0], undefined, { numeric: true })).map(([v, n]) => `<option value="${esc(v)}" ${cur === v ? "selected" : ""}>${esc(v)} (${n})</option>`).join("")}</select></label>`;
+  }).join("");
+  // tags list
+  const colF = f.col;
+  const list = [...D.tags.values()].map((t) => ({ t, n: tagCount(t.id, colF) })).filter((x) => x.n.t > 0 || x.t.id === f.tag)
+    .filter((x) => !UI.tagFind || x.t.name.toLowerCase().includes(UI.tagFind.toLowerCase()))
+    .sort((a, b) => b.n.t - a.n.t || a.t.name.localeCompare(b.t.name));
+  const maxN = Math.max(1, ...list.map((x) => x.n.t));
+  const tagHtml = list.length ? list.map(({ t, n }) => `<div class="tagrowside">
+      <button class="tagbtn" data-act="ftag" data-id="${esc(t.id)}" aria-pressed="${f.tag === t.id}" title="${n.c} confirmed, ${n.s} suggested">
+        <span class="tagname"><span class="t">${esc(t.name)}</span><span class="bar"><i style="width:${(n.c / maxN) * 100}%"></i></span></span><span class="num">${n.t}</span>
+      </button>
+      ${t.kind === "auto" ? `<button class="xbtn" data-act="exclude" data-id="${esc(t.id)}" aria-label="Exclude ${esc(t.name)} from tagging" title="Exclude this word">${ICON_X}</button>` : ""}
+    </div>`).join("") : `<p class="muted small">No tags match.</p>`;
+  return `
+    <div><h3>Show</h3><div class="statuslist">${statuses.map(([k, l]) => `<button data-act="fstatus" data-v="${k}" aria-pressed="${f.status === k}">${l}<span class="num">${cnt[k].toLocaleString()}</span></button>`).join("")}</div></div>
+    ${qSel || ctxSel ? `<div style="display:grid;gap:12px">${qSel}${ctxSel}</div>` : ""}
+    <label class="field"><span>Search comments</span><input class="input" type="search" data-inp="fq" value="${esc(f.q)}" placeholder="Words or phrases"></label>
+    <div>
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px"><h3 style="margin:0">Tags</h3><span class="spacer"></span>${f.tag ? `<button class="btn quiet sm" data-act="ftag-clear">Clear tag filter</button>` : ""}</div>
+      <input class="input" type="search" data-inp="tagfind" value="${esc(UI.tagFind)}" placeholder="Find a tag" aria-label="Find a tag" style="margin-bottom:8px">
+      <div class="taglist" id="sidetags">${tagHtml}</div>
+      <p class="small muted" style="margin-top:8px">Bars show confirmed tags. Hover a word and select × to stop using it as a tag.</p>
+    </div>`;
+}
+
+function highlight(c, ids) {
+  const ranges = [];
+  for (const id of ids) for (const [a, b] of c.matches.get(id) || []) ranges.push([c.toks[a].start, c.toks[b].end, D.tags.get(id).name]);
+  ranges.sort((x, y) => x[0] - y[0]);
+  const merged = [];
+  for (const r of ranges) { const last = merged[merged.length - 1]; if (last && r[0] <= last[1]) { last[1] = Math.max(last[1], r[1]); if (!last[2].includes(r[2])) last[2] += ", " + r[2]; } else merged.push(r.slice()); }
+  const text = c.text; // tokenizer offsets line up: normText swaps characters one for one
+  let out = "", pos = 0;
+  for (const [a, b, name] of merged) { out += esc(text.slice(pos, a)) + `<mark title="${esc(name)}">${esc(text.slice(a, b))}</mark>`; pos = b; }
+  return out + esc(text.slice(pos));
+}
+function ctxHtml(c) {
+  const parts = contextCols().map((cc) => { const v = P.rows[c.r][cc.idx]; return v ? `<span>${cc.label ? `<b>${esc(cc.label)}</b> ` : ""}${esc(v)}</span>` : ""; }).filter(Boolean);
+  return parts.length ? `<div class="ctx">${parts.join("")}</div>` : "";
+}
+function chipOrder(c, conf, sugg) {
+  const first = (id) => { const m = c.matches.get(id); return m ? c.toks[m[0][0]].start : 1e9; };
+  return [...conf.map((id) => ({ id, k: "conf" })), ...sugg.map((id) => ({ id, k: "sugg" }))].sort((a, b) => first(a.id) - first(b.id));
+}
+function quickPicks(c, exclude, n) {
+  if (n <= 0) return [];
+  return [...D.tags.values()].filter((t) => !exclude.includes(t.id)).map((t) => ({ t, n: tagCount(t.id, c.c).t }))
+    .filter((x) => x.n > 0).sort((a, b) => b.n - a.n || a.t.name.localeCompare(b.t.name)).slice(0, n).map((x) => x.t.id);
+}
+
+function currentReview() {
+  if (UI.qkey !== JSON.stringify(UI.f)) buildQueue(UI.queue[UI.qpos]);
+  const id = UI.queue[UI.qpos];
+  return id ? D.byId.get(id) : null;
+}
+function viewReview() {
+  const c = currentReview();
+  if (!c) {
+    const left = D.comments.filter((x) => !isSkipped(x) && !st(x.id).v).length;
+    return `<div class="review"><div class="empty">
+      <h2>${UI.queue.length ? "You've reached the end of this list" : "Nothing to show with these filters"}</h2>
+      <p>${left ? `${plural(left, "comment")} still need review.` : "Every comment has been reviewed or skipped. Head to Export when you're ready."}</p>
+      <div class="actions" style="justify-content:center">${UI.queue.length ? `<button class="btn" data-act="prev">Back to the last comment</button>` : ""}${left ? `<button class="btn primary" data-act="review-todo">Review remaining comments</button>` : `<button class="btn primary" data-act="tab" data-tab="export">Go to Export</button>`}<button class="btn" data-act="fstatus" data-v="all">Show all comments</button></div>
+    </div></div>`;
+  }
+  const s = st(c.id), sk = isSkipped(c), { conf, sugg } = tagsOf(c);
+  const chips = chipOrder(c, conf, sugg);
+  const picks = quickPicks(c, [...conf, ...sugg], 9 - chips.length);
+  UI.keymap = [...chips.map((x) => ({ id: x.id, on: true })), ...picks.map((id) => ({ id, on: false }))].slice(0, 9);
+  const chipHtml = chips.length ? chips.map((x, i) => `<button class="chip ${x.k}" data-act="chip-remove" data-id="${esc(x.id)}" title="${x.k === "sugg" ? "Suggested from the text. Select to remove." : "Confirmed. Select to remove."}"><span class="n">${i < 9 ? i + 1 : ""}</span>${esc(D.tags.get(x.id).name)}<span class="x">${ICON_X}</span></button>`).join("") : `<span class="chips-empty">No tags yet</span>`;
+  const pickHtml = picks.map((id, j) => `<button class="chip add" data-act="chip-add" data-id="${esc(id)}"><span class="n">${chips.length + j + 1}</span>${esc(D.tags.get(id).name)}</button>`).join("");
+  const others = D.comments.filter((o) => o.r === c.r && o.id !== c.id);
+  const badges = `${s.v && !sk ? `<span class="badge rev">Reviewed</span>` : ""}${sk ? `<span class="badge">${s.s === true ? "Skipped" : "Skipped automatically as a non-response"}</span>` : ""}`;
+  return `<div class="review">
+    <div class="qbar"><span>${(UI.qpos + 1).toLocaleString()} of ${UI.queue.length.toLocaleString()} in this list</span><span class="spacer"></span>
+      <button class="btn sm" data-act="prev" ${UI.qpos ? "" : "disabled"}>Previous</button><button class="btn sm" data-act="next" ${UI.qpos < UI.queue.length - 1 ? "" : "disabled"}>Next</button></div>
+    <article class="card" aria-labelledby="ctext">
+      <div class="card-q">${esc(colLabel(c.c))}${badges}</div>
+      <p class="comment-text" id="ctext">${highlight(c, [...conf, ...sugg])}</p>
+      ${ctxHtml(c)}
+      <div class="tagzone">
+        <div class="chips"><span class="zlabel">Tags</span>${chipHtml}</div>
+        <div class="addrow"><span class="zlabel">Add</span><input class="input" id="addtag" list="taglist" placeholder="Type a tag name" aria-label="Add a tag" data-key="addtag">${pickHtml ? `<div class="chips">${pickHtml}</div>` : ""}</div>
+      </div>
+      ${others.length ? `<details class="others" ${UI.othersOpen ? "open" : ""} data-tog="others"><summary>Same respondent's other answers (${others.length})</summary><dl>${others.map((o) => `<div><dt>${esc(colLabel(o.c))}</dt><dd>${esc(o.text)}</dd></div>`).join("")}</dl></details>` : ""}
+    </article>
+    <div class="actions">
+      <button class="btn" data-act="skip">${sk ? "Unskip" : "Skip"} <kbd>S</kbd></button>
+      <span class="spacer"></span>
+      <button class="btn primary" data-act="confirm">Confirm and next <kbd>Enter</kbd></button>
+    </div>
+    <div class="keys" aria-label="Keyboard shortcuts">
+      <span><kbd>Enter</kbd> confirm tags and go to next</span><span><kbd>1</kbd>–<kbd>9</kbd> remove or add a numbered tag</span>
+      <span><kbd>T</kbd> type a new tag</span><span><kbd>S</kbd> skip</span><span><kbd>←</kbd><kbd>→</kbd> previous and next</span>
+    </div>
+  </div>`;
+}
+
+function viewBrowse() {
+  const list = filtered();
+  const shown = list.slice(0, UI.browseLimit);
+  const tag = UI.f.tag ? D.tags.get(UI.f.tag) : null;
+  const pending = tag ? list.filter((c) => !isSkipped(c) && !(st(c.id).c || []).includes(tag.id)).length : 0;
+  const cards = shown.map((c) => {
+    const { conf, sugg } = tagsOf(c), sk = isSkipped(c), s = st(c.id);
+    const chips = chipOrder(c, conf, sugg).map((x) => `<button class="chip ${x.k}" data-act="chip-remove" data-cid="${esc(c.id)}" data-id="${esc(x.id)}" title="Select to remove">${esc(D.tags.get(x.id).name)}<span class="x">${ICON_X}</span></button>`).join("");
+    return `<article class="bcard ${sk ? "is-skip" : ""}">
+      <div class="top"><span class="q">${esc(colLabel(c.c))}</span>${s.v && !sk ? `<span class="badge rev">Reviewed</span>` : ""}${sk ? `<span class="badge">Skipped</span>` : ""}</div>
+      <p class="comment-text sm">${highlight(c, [...conf, ...sugg])}</p>
+      ${ctxHtml(c)}
+      ${sk ? "" : `<div class="chips">${chips || `<span class="chips-empty">No tags</span>`}</div>`}
+      <div class="foot">
+        ${sk ? "" : `<input class="input" list="taglist" placeholder="Add a tag" aria-label="Add a tag to this comment" data-key="addtag-b" data-cid="${esc(c.id)}">`}
+        <span class="spacer"></span>
+        ${sk ? "" : `<button class="btn sm ${s.v ? "" : "primary"}" data-act="b-confirm" data-cid="${esc(c.id)}">${s.v ? "Reviewed" : "Confirm tags"}</button>`}
+        <button class="btn sm quiet" data-act="b-skip" data-cid="${esc(c.id)}">${sk ? "Unskip" : "Skip"}</button>
+        <button class="btn sm quiet" data-act="b-open" data-cid="${esc(c.id)}">Open in Review</button>
+      </div>
+    </article>`;
+  }).join("");
+  return `<div class="browse-head"><h2>${plural(list.length, "comment")}</h2><span class="spacer"></span>
+    ${tag && pending ? `<button class="btn" data-act="bulk-confirm">Confirm “${esc(tag.name)}” on all ${pending.toLocaleString()} shown</button>` : ""}</div>
+    ${list.length ? `<div class="blist">${cards}</div>` : `<div class="empty"><h2>No comments match these filters</h2><button class="btn" data-act="fstatus" data-v="all">Show all comments</button></div>`}
+    ${list.length > shown.length ? `<div class="more"><button class="btn" data-act="more">Show ${Math.min(60, list.length - shown.length)} more</button></div>` : ""}`;
+}
+
+function viewTags() {
+  const all = [...D.tags.values()].map((t) => ({ t, n: tagCount(t.id) }));
+  const used = all.filter((x) => x.n.t > 0).sort((a, b) => b.n.t - a.n.t || a.t.name.localeCompare(b.t.name));
+  const unused = all.filter((x) => x.n.t === 0 && x.t.kind === "defined").sort((a, b) => a.t.name.localeCompare(b.t.name));
+  const opts = (skip) => [...D.tags.values()].filter((t) => t.id !== skip).sort((a, b) => a.name.localeCompare(b.name)).map((t) => `<option value="${esc(t.id)}">${esc(t.name)}</option>`).join("");
+  const row = ({ t, n }) => {
+    const terms = t.kind === "auto" ? (t.forms && t.forms.length > 1 ? t.forms.map(([f]) => f).join(", ") : t.terms[0]) : (t.terms.length ? t.terms.join(", ") : "Added by hand only");
+    return `<tr>
+      <td><strong>${esc(t.name)}</strong><span class="kind">${t.kind === "auto" ? (t.orphan ? "Word you tagged by hand" : "Frequent word") : "Your tag"}</span></td>
+      <td class="terms">${esc(terms)}</td>
+      <td class="num" title="${n.c} confirmed, ${n.s} suggested">${n.t}<span class="kind">${n.c} confirmed</span></td>
+      <td><div class="acts">
+        <button class="btn quiet sm" data-act="edit-tag" data-id="${esc(t.id)}">Edit</button>
+        <select data-chg="merge" data-id="${esc(t.id)}" aria-label="Merge ${esc(t.name)} into another tag"><option value="">Merge into…</option>${opts(t.id)}</select>
+        <button class="btn quiet sm danger" data-act="delete-tag" data-id="${esc(t.id)}">${t.kind === "auto" ? "Exclude" : "Delete"}</button>
+      </div></td></tr>`;
+  };
+  const cb = P.codebook;
+  return `<div class="tagspage">
+    <div>
+      <section class="panel">
+        <div class="panel-h"><h2>Tags in use</h2><span class="muted small">${plural(used.length, "tag")}</span><span class="spacer"></span><button class="btn primary sm" data-act="new-tag">New tag</button></div>
+        <div style="overflow-x:auto"><table class="ttable">
+          <thead><tr><th>Tag</th><th>Matches</th><th style="text-align:right">Comments</th><th><span class="sr">Actions</span></th></tr></thead>
+          <tbody>${used.map(row).join("") || `<tr><td colspan="4" class="muted">No tags match any comments yet.</td></tr>`}</tbody>
+        </table></div>
+      </section>
+      ${unused.length ? `<section class="panel"><details><summary class="panel-h" style="cursor:pointer;border-bottom:0"><h2 style="display:inline">Tags with no matches in this file</h2> <span class="muted small">${unused.length}</span></summary>
+        <div style="overflow-x:auto;border-top:1px solid var(--line)"><table class="ttable"><tbody>${unused.map(row).join("")}</tbody></table></div></details></section>` : ""}
+    </div>
+    <div>
+      <section class="panel">
+        <div class="panel-h"><h2>Frequent words</h2></div>
+        <div class="panel-b">
+          <p class="small muted">Any word or two-word phrase used in at least this many comments becomes a suggested tag.</p>
+          <div class="inline"><input class="input numinput" type="number" min="2" max="500" value="${D.minCount}" data-chg="mincount" aria-label="Minimum comments per suggested tag"><span class="small muted">comments</span>
+          ${cb.minCount ? `<button class="btn quiet sm" data-act="mincount-auto">Use automatic (${D.autoMin})</button>` : `<span class="small muted">Automatic for ${plural(D.liveCount, "comment")}</span>`}</div>
+        </div>
+      </section>
+      <section class="panel">
+        <div class="panel-h"><h2>Excluded words</h2><span class="muted small">${cb.exclusions.length}</span></div>
+        <div class="panel-b">
+          <p class="small muted">These never become suggested tags. Common words like “the,” “and,” and “was” are always ignored.</p>
+          <div class="inline"><input class="input" id="exadd" placeholder="Add words, separated by commas" data-key="exadd"><button class="btn sm" data-act="exadd">Add</button></div>
+          <div class="wordchips">${cb.exclusions.slice().sort((a, b) => a.localeCompare(b)).map((e) => `<span class="wchip">${esc(e)}<button class="xbtn" data-act="exdel" data-w="${esc(e)}" aria-label="Stop excluding ${esc(e)}">${ICON_X}</button></span>`).join("")}</div>
+          ${(cb.splits || []).length ? `<p class="small muted" style="margin-top:6px">Word forms kept separate:</p><div class="wordchips">${cb.splits.map((w) => `<span class="wchip">${esc(w.includes("|") ? w.split("|")[1] : w)}<button class="xbtn" data-act="unsplit" data-w="${esc(w)}" aria-label="Group ${esc(w)} with its other forms again">${ICON_X}</button></span>`).join("")}</div>` : ""}
+        </div>
+      </section>
+      <section class="panel">
+        <div class="panel-h"><h2>Codebook</h2></div>
+        <div class="panel-b">
+          <p class="small muted">Your tags, synonyms, and excluded words. Save it to reuse with the next survey. New projects in this browser also start from your latest codebook.</p>
+          <div class="dlrow"><button class="btn sm" data-act="dl-codebook">Save codebook</button><button class="btn sm" data-act="load-codebook">Load codebook</button></div>
+          <button class="linkbtn small" data-act="reset-codebook" style="justify-self:start">Reset to the starter codebook</button>
+        </div>
+      </section>
+    </div>
+  </div>`;
+}
+
+function openTagDialog(id) {
+  const t = id ? D.tags.get(id) : null;
+  const dlg = $("#dlg");
+  let formsHtml = "";
+  if (t && t.kind === "auto" && !t.phrase && t.forms && t.forms.length > 1) {
+    const groups = new Map();
+    t.forms.forEach(([f, n]) => { const s = singular(f); groups.set(s, (groups.get(s) || 0) + n); });
+    if (groups.size > 1) formsHtml = `<div class="field"><span>Word forms grouped under this tag</span><p class="small muted">${t.forms.map(([f, n]) => `${esc(f)} (${n})`).join(", ")}</p>
+      <div class="forms">${[...groups.keys()].filter((g) => g !== t.key).map((g) => `<button type="button" class="btn sm" data-act="split" data-w="${esc(t.key + "|" + g)}">Keep “${esc(g)}” separate</button>`).join("")}</div></div>`;
+  }
+  const terms = t ? (t.kind === "auto" ? [t.terms[0]] : t.terms) : [];
+  dlg.innerHTML = `<form method="dialog" id="tagform">
+    <h2>${t ? "Edit tag" : "New tag"}</h2>
+    <label class="field"><span>Name</span><input class="input" name="name" required value="${esc(t ? t.name : "")}"></label>
+    <label class="field"><span>Words and phrases that suggest this tag</span><textarea class="input" name="terms" rows="4">${esc(terms.join("\n"))}</textarea>
+      <small class="muted">One per line or separated by commas; synonyms go here too. Plurals match automatically, and other forms (like “discuss” and “discussion”) match when both appear in the data. Leave blank to add this tag by hand only.</small></label>
+    ${formsHtml}
+    <div class="dlg-actions"><button class="btn" value="cancel">Cancel</button><button class="btn primary" value="save">${t ? "Save tag" : "Create tag"}</button></div>
+  </form>`;
+  dlg.returnValue = "";
+  dlg.onclose = () => {
+    if (dlg.returnValue !== "save") return;
+    const fd = new FormData($("#tagform"));
+    const name = String(fd.get("name") || "").trim(); if (!name) return;
+    const newTerms = parseTerms(fd.get("terms"));
+    if (!t) { P.codebook.tags.push({ id: "t:" + uid(), name, terms: newTerms }); }
+    else if (t.kind === "auto") {
+      const def = ensureDefined(t.id); def.name = name; def.terms = newTerms.length ? newTerms : [t.terms[0]];
+      if (!def.terms.some((x) => D.key(x.toLowerCase()) === t.key)) { /* user removed the word itself; keep their choice */ }
+      if (UI.f.tag === t.id) UI.f.tag = def.id;
+    } else { const def = defOf(t.id); def.name = name; def.terms = newTerms; }
+    UI.clouds = {};
+    changed({ derive: true });
+  };
+  dlg.showModal();
+}
+
+function viewExport() {
+  const s = P.settings;
+  const unrev = D.comments.filter((c) => !isSkipped(c) && !st(c.id).v).length;
+  const cCols = commentCols();
+  const check = (k, l, sub) => `<label class="check"><input type="checkbox" data-chg="setting" data-k="${k}" ${s[k] ? "checked" : ""}><span>${l}${sub ? `<small>${sub}</small>` : ""}</span></label>`;
+  return `<div class="exportpage">
+    <section class="panel">
+      <div class="panel-h"><h2>Word document</h2></div>
+      <div class="panel-b">
+        ${unrev ? `<p class="warnbox">${plural(unrev, "comment")} haven't been reviewed yet. ${s.includeSuggested ? "Their suggested tags will be used." : "Only confirmed tags are exported, so they'll land under Untagged unless you include suggested tags below."}</p>` : ""}
+        <label class="field" style="max-width:560px"><span>Title</span><input class="input" data-inp="ptitle" value="${esc(P.title)}"></label>
+        <div class="opts">
+          ${check("includeSuggested", "Include suggested tags", "Otherwise only tags you confirmed are used.")}
+          ${check("includeUntagged", "Include an Untagged section", "Lists comments with no tags so nothing is lost.")}
+          ${check("includeContext", "Show context with each comment", contextCols().length ? contextCols().map((c) => c.label || humanize(P.headers[c.idx])).join(", ") : "No context columns chosen.")}
+          ${check("includeClouds", "Include word clouds", "One per question, below its heading.")}
+          <label class="field"><span>Order tags by</span><select class="input" data-chg="setting-sel" data-k="sortTags"><option value="count" ${s.sortTags === "count" ? "selected" : ""}>Most comments first</option><option value="alpha" ${s.sortTags === "alpha" ? "selected" : ""}>A to Z</option></select></label>
+        </div>
+        <p class="small muted">${cCols.length > 1 ? "Each question is a Heading 2 and each tag a Heading 3 with its comments as bullets." : "Each tag is a Heading 2 with its comments as bullets."} Comments with several tags appear under each one.</p>
+        <div class="dlrow"><button class="btn primary" data-act="dl-docx">Download Word document</button></div>
+      </div>
+    </section>
+    <section class="panel">
+      <div class="panel-h"><h2>Word clouds</h2><span class="spacer"></span>
+        <label class="inline small"><span class="muted">Colors</span><select class="input" style="width:auto" data-chg="setting-sel" data-k="palette">${Object.entries(PALETTES).map(([k, p]) => `<option value="${k}" ${s.palette === k ? "selected" : ""}>${p.name}</option>`).join("")}</select></label>
+      </div>
+      <div class="panel-b"><p class="small muted">Tag size reflects how many comments have that tag. Clouds use the same tags as the Word document, so turn on suggested tags if you want a preview before you finish reviewing.</p>
+        <div class="clouds">${cCols.map((c) => `<figure class="cloud" style="margin:0"><canvas id="cloud-${c.idx}" width="1600" height="900" role="img" aria-label="Word cloud for ${esc(colLabel(c.idx))}"></canvas><figcaption class="cap"><span>${esc(colLabel(c.idx))}</span><span class="spacer"></span><button class="btn sm" data-act="dl-cloud" data-col="${c.idx}">Download PNG</button></figcaption></figure>`).join("")}</div>
+      </div>
+    </section>
+    <section class="panel">
+      <div class="panel-h"><h2>Data</h2></div>
+      <div class="panel-b">
+        <p class="small muted">Tag counts come as a CSV with one row per question and tag, ready for charting. The Excel file lists every comment with its tags and context.</p>
+        <div class="dlrow"><button class="btn" data-act="dl-csv">Download tag counts (CSV)</button><button class="btn" data-act="dl-xlsx">Download tagged comments (Excel)</button></div>
+      </div>
+    </section>
+  </div>`;
+}
+
+/* ---------- Export data ---------- */
+function exportGroups(colIdx) {
+  const s = P.settings;
+  const cs = D.comments.filter((c) => c.c === colIdx);
+  const live = cs.filter((c) => !isSkipped(c));
+  const groups = new Map(), untagged = [];
+  for (const c of live) {
+    const { conf, sugg } = tagsOf(c);
+    const ids = s.includeSuggested ? [...conf, ...sugg] : conf;
+    if (!ids.length) { untagged.push(c); continue; }
+    for (const id of ids) { if (!groups.has(id)) groups.set(id, []); groups.get(id).push(c); }
+  }
+  let arr = [...groups.entries()].map(([id, list]) => ({ id, name: D.tags.get(id).name, list: list.sort((a, b) => a.r - b.r) }));
+  arr.sort(s.sortTags === "alpha" ? (a, b) => a.name.localeCompare(b.name) : (a, b) => b.list.length - a.list.length || a.name.localeCompare(b.name));
+  return { groups: arr, untagged, total: live.length, skipped: cs.length - live.length };
+}
+function ctxString(c) {
+  return contextCols().map((cc) => { const v = P.rows[c.r][cc.idx]; return v ? (cc.label ? `${cc.label}: ${v}` : v) : null; }).filter(Boolean).join("; ");
+}
+
+/* ---------- Word clouds ---------- */
+function mulberry32(a) { return function () { a |= 0; a = (a + 0x6D2B79F5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
+function drawCloud(canvas, items, colors) {
+  const W = canvas.width, H = canvas.height, ctx = canvas.getContext("2d");
+  ctx.fillStyle = "#FFFFFF"; ctx.fillRect(0, 0, W, H);
+  if (!items.length) {
+    ctx.fillStyle = "#7C879A"; ctx.font = `400 40px ${cloudFont()}`; ctx.textAlign = "center"; ctx.fillText("No tags yet", W / 2, H / 2); ctx.textAlign = "left";
+    return false;
+  }
+  const maxC = items[0].n, minC = items[items.length - 1].n;
+  let scale = 1, placed = [];
+  for (let attempt = 0; attempt < 9; attempt++) {
+    placed = []; let failed = false;
+    const maxF = Math.min(170, H / (items.length < 5 ? 3 : 4.4)) * scale, minF = Math.max(20, maxF * 0.2);
+    const rnd = mulberry32(7);
+    for (let i = 0; i < items.length; i++) {
+      const it = items[i];
+      const f = maxC === minC ? (maxF + minF) / 2 : minF + ((it.n - minC) / (maxC - minC)) * (maxF - minF);
+      const weight = f > 70 ? 700 : 600;
+      ctx.font = `${weight} ${f}px ${cloudFont()}`;
+      const m = ctx.measureText(it.name);
+      const w = m.width, asc = m.actualBoundingBoxAscent || f * 0.75, desc = m.actualBoundingBoxDescent || f * 0.2, h = asc + desc;
+      const pad = Math.max(4, f * 0.1);
+      const phase = rnd() * Math.PI * 2;
+      let spot = null;
+      for (let t = 0; t < 140; t += 0.045) {
+        const r = 4.2 * t;
+        const x = W / 2 + r * Math.cos(t + phase) * (W / H) - w / 2;
+        const y = H / 2 + r * Math.sin(t + phase) - h / 2;
+        if (x < 10 || y < 10 || x + w > W - 10 || y + h > H - 10) { if (r > W) break; continue; }
+        const box = { x: x - pad, y: y - pad, w: w + pad * 2, h: h + pad * 2 };
+        if (placed.every((p) => box.x + box.w <= p.box.x || p.box.x + p.box.w <= box.x || box.y + box.h <= p.box.y || p.box.y + p.box.h <= box.y)) { spot = { x, y, box }; break; }
+      }
+      if (!spot) { failed = true; break; }
+      placed.push({ it, f, weight, x: spot.x, y: spot.y + asc, box: spot.box, color: colors[i % colors.length] });
+    }
+    if (!failed) break;
+    scale *= 0.86;
+  }
+  for (const p of placed) { ctx.font = `${p.weight} ${p.f}px ${cloudFont()}`; ctx.fillStyle = p.color; ctx.fillText(p.it.name, p.x, p.y); }
+  return true;
+}
+function cloudFont() { return '"Segoe UI", "Segoe UI Variable Display", system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif'; }
+function cloudItems(colIdx) { return exportGroups(colIdx).groups.slice(0, 60).map((g) => ({ name: g.name, n: g.list.length })); }
+function drawAllClouds() {
+  const colors = PALETTES[P.settings.palette].colors;
+  for (const c of commentCols()) { const cv = $("#cloud-" + c.idx); if (cv) drawCloud(cv, cloudItems(c.idx), colors); }
+}
+function cloudCanvas(colIdx) {
+  const cv = document.createElement("canvas"); cv.width = 1600; cv.height = 900;
+  const has = drawCloud(cv, cloudItems(colIdx), PALETTES[P.settings.palette].colors);
+  return { cv, has };
+}
+const canvasPng = (cv) => new Promise((res) => cv.toBlob((b) => res(b), "image/png"));
+
+/* ---------- Word document ---------- */
+async function buildDocx() {
+  const d = window.docx;
+  if (!d) { alert("The Word library didn't load. Check your internet connection and reload the page."); return; }
+  const s = P.settings, cols = commentCols(), multi = cols.length > 1;
+  const kids = [];
+  const text = (t, o = {}) => new d.TextRun({ text: t, ...o });
+  const heading = (t, level) => new d.Paragraph({ heading: level, children: [text(t)] });
+  const bullet = (c) => {
+    const runs = [];
+    c.text.split("\n").forEach((line, i) => runs.push(new d.TextRun({ text: line, break: i ? 1 : 0 })));
+    if (s.includeContext) { const cx = ctxString(c); if (cx) runs.push(text(` (${cx})`, { italics: true })); }
+    return new d.Paragraph({ numbering: { reference: "bullets", level: 0 }, spacing: { after: 80 }, children: runs });
+  };
+  const totalLive = D.comments.filter((c) => !isSkipped(c)).length;
+  kids.push(heading(P.title || "Survey comments", d.HeadingLevel.HEADING_1));
+  kids.push(new d.Paragraph({ children: [text(`${plural(totalLive, "comment")}${multi ? ` across ${cols.length} questions` : ""}. ${s.includeSuggested ? "Includes confirmed and suggested tags." : "Tags shown are the ones confirmed during review."} Comments with more than one tag appear under each. Generated ${new Date().toLocaleDateString(undefined, { year: "numeric", month: "long", day: "numeric" })}.`)] }));
+  for (const col of cols) {
+    const g = exportGroups(col.idx), label = colLabel(col.idx);
+    if (multi) kids.push(heading(label, d.HeadingLevel.HEADING_2));
+    kids.push(new d.Paragraph({ children: [text(`${plural(g.total, "comment")}${multi ? "" : ` on \u201c${label}\u201d`}${g.skipped ? `, plus ${g.skipped} skipped as non-responses` : ""}.`)] }));
+    if (s.includeClouds && g.groups.length) {
+      const { cv } = cloudCanvas(col.idx);
+      const png = new Uint8Array(await (await canvasPng(cv)).arrayBuffer());
+      const top = g.groups.slice(0, 12).map((x) => `${x.name} (${x.list.length})`).join(", ");
+      kids.push(new d.Paragraph({ children: [new d.ImageRun({ type: "png", data: png, transformation: { width: 624, height: 351 }, altText: { name: "Word cloud", title: `Word cloud: ${label}`, description: `Word cloud of tags for ${label}. Largest: ${top}.` } })] }));
+    }
+    const H = multi ? d.HeadingLevel.HEADING_3 : d.HeadingLevel.HEADING_2;
+    for (const grp of g.groups) { kids.push(heading(`${capFirst(grp.name)} (${grp.list.length})`, H)); grp.list.forEach((c) => kids.push(bullet(c))); }
+    if (s.includeUntagged && g.untagged.length) { kids.push(heading(`Untagged (${g.untagged.length})`, H)); g.untagged.forEach((c) => kids.push(bullet(c))); }
+  }
+  const head = (size, font) => ({ run: { font, size, color: "0F4761" }, paragraph: { spacing: { before: size >= 40 ? 360 : 160, after: 80 }, keepNext: true, keepLines: true } });
+  const doc = new d.Document({
+    creator: "Comment Sorter", title: P.title,
+    styles: { default: {
+      document: { run: { font: "Aptos", size: 24 }, paragraph: { spacing: { after: 160, line: 278, lineRule: d.LineRuleType.AUTO } } },
+      heading1: head(40, "Aptos Display"), heading2: head(32, "Aptos Display"), heading3: head(28, "Aptos")
+    } },
+    numbering: { config: [{ reference: "bullets", levels: [{ level: 0, format: d.LevelFormat.BULLET, text: "\u2022", alignment: d.AlignmentType.LEFT, style: { paragraph: { indent: { left: 720, hanging: 360 } } } }] }] },
+    sections: [{ properties: { page: { size: { width: 12240, height: 15840 }, margin: { top: 1440, right: 1440, bottom: 1440, left: 1440 } } }, children: kids }]
+  });
+  const blob = await d.Packer.toBlob(doc);
+  download(blob, `${slug(P.title)}.docx`);
+}
+function csvCell(v) { v = String(v == null ? "" : v); return /[",\n]/.test(v) ? `"${v.replace(/"/g, '""')}"` : v; }
+function countRows() {
+  const rows = [["Question", "Tag", "Comments", "Percent of comments"]];
+  for (const col of commentCols()) {
+    const g = exportGroups(col.idx), label = colLabel(col.idx);
+    const pct = (n) => (g.total ? Math.round((n / g.total) * 1000) / 10 : 0);
+    g.groups.forEach((x) => rows.push([label, x.name, x.list.length, pct(x.list.length)]));
+    if (g.untagged.length) rows.push([label, "Untagged", g.untagged.length, pct(g.untagged.length)]);
+  }
+  return rows;
+}
+function downloadCsv() {
+  const csv = "\uFEFF" + countRows().map((r) => r.map(csvCell).join(",")).join("\r\n");
+  download(new Blob([csv], { type: "text/csv;charset=utf-8" }), `${slug(P.title)}-tag-counts.csv`);
+}
+function downloadXlsx() {
+  const ctxC = contextCols();
+  const head = ["Question", "Comment", "Tags", "Suggested tags", "Status", ...ctxC.map((c) => c.label || P.headers[c.idx]), "Source row"];
+  const rows = [head];
+  for (const c of D.comments) {
+    const { conf, sugg } = tagsOf(c), sk = isSkipped(c);
+    rows.push([colLabel(c.c), c.text, sk ? "" : conf.map((id) => D.tags.get(id).name).join("; "), sk ? "" : sugg.map((id) => D.tags.get(id).name).join("; "),
+      sk ? "Skipped" : st(c.id).v ? "Reviewed" : "Not reviewed", ...ctxC.map((cc) => P.rows[c.r][cc.idx] || ""), P.rowNums ? P.rowNums[c.r] : c.r + 2]);
+  }
+  const wb = XLSX.utils.book_new();
+  const ws1 = XLSX.utils.aoa_to_sheet(rows);
+  ws1["!cols"] = [{ wch: 24 }, { wch: 70 }, { wch: 30 }, { wch: 30 }, { wch: 14 }, ...ctxC.map(() => ({ wch: 22 })), { wch: 10 }];
+  XLSX.utils.book_append_sheet(wb, ws1, "Comments");
+  const ws2 = XLSX.utils.aoa_to_sheet(countRows());
+  ws2["!cols"] = [{ wch: 30 }, { wch: 28 }, { wch: 12 }, { wch: 18 }];
+  XLSX.utils.book_append_sheet(wb, ws2, "Tag counts");
+  XLSX.writeFile(wb, `${slug(P.title)}-tagged-comments.xlsx`);
+}
+
+/* ---------- Events ---------- */
+function go(delta) {
+  const n = UI.queue.length; if (!n) return;
+  UI.qpos = Math.max(0, Math.min(n, UI.qpos + delta));
+  render(); window.scrollTo({ top: 0 });
+}
+document.addEventListener("click", async (e) => {
+  const el = e.target.closest("[data-act]"); if (!el) return;
+  const a = el.dataset.act, id = el.dataset.id;
+  const menu = el.closest("details.menu"); if (menu) menu.open = false;
+  const cmt = () => D.byId.get(el.dataset.cid) || D.byId.get(UI.queue[UI.qpos]);
+  switch (a) {
+    case "resume": try { P = JSON.parse(localStorage.getItem(LS_PROJECT)); P.settings = Object.assign({}, DEFAULT_SETTINGS, P.settings || {}); resetFilters(); derive(); UI.view = "work"; render(); } catch (err) { UI.err = "That saved project couldn't be opened."; render(); } break;
+    case "discard": if (confirm("Discard the saved project in this browser? Download a project file first if you might need it.")) { localStorage.removeItem(LS_PROJECT); render(); } break;
+    case "open-project": $("#fileProject").click(); break;
+    case "dl-project": downloadProject(); break;
+    case "edit-columns": editColumns(); break;
+    case "start-over": if (confirm("Start over with a new file? The current project will be removed from this browser. Download a project file first if you want to keep it.")) { localStorage.removeItem(LS_PROJECT); P = null; D = null; UI.view = "landing"; render(); } break;
+    case "cancel-setup": if (T.editing) { T = null; UI.view = "work"; } else { T = null; UI.view = "landing"; } render(); break;
+    case "start": startProject(); break;
+    case "tab": UI.tab = el.dataset.tab; render(); break;
+    case "fstatus": UI.f.status = el.dataset.v; UI.browseLimit = 60; render(); break;
+    case "review-todo": UI.f = { status: "todo", col: "all", tag: null, ctx: {}, q: "" }; UI.tab = "review"; render(); break;
+    case "ftag": UI.f.tag = UI.f.tag === id ? null : id; UI.browseLimit = 60; render(); break;
+    case "ftag-clear": UI.f.tag = null; render(); break;
+    case "exclude": excludeWord(id); break;
+    case "prev": go(-1); break;
+    case "next": go(1); break;
+    case "chip-remove": { const c = cmt(); removeTag(c, id); changed(); break; }
+    case "chip-add": { const c = cmt(); addTag(c, id); changed(); break; }
+    case "confirm": { const c = cmt(); if (c && !isSkipped(c)) confirmAll(c); recount(); saveSoon(); go(1); break; }
+    case "skip": { const c = cmt(); const was = isSkipped(c); toggleSkip(c); recount(); saveSoon(); if (!was) go(1); else render(); break; }
+    case "b-confirm": { const c = cmt(); confirmAll(c); changed(); break; }
+    case "b-skip": { const c = cmt(); toggleSkip(c); changed(); break; }
+    case "b-open": { buildQueue(el.dataset.cid); UI.tab = "review"; render(); window.scrollTo({ top: 0 }); break; }
+    case "bulk-confirm": { const t = UI.f.tag; let n = 0; filtered().forEach((c) => { if (!isSkipped(c) && !(st(c.id).c || []).includes(t)) { addTag(c, t); n++; } }); changed(); toast(`Confirmed on ${plural(n, "comment")}`); break; }
+    case "more": UI.browseLimit += 60; render(); break;
+    case "new-tag": openTagDialog(null); break;
+    case "edit-tag": openTagDialog(id); break;
+    case "delete-tag": deleteTag(id); break;
+    case "split": { P.codebook.splits = [...new Set([...(P.codebook.splits || []), el.dataset.w])]; $("#dlg").close(); UI.clouds = {}; changed({ derive: true }); toast(`“${el.dataset.w.split("|")[1]}” is now its own word`); break; }
+    case "unsplit": P.codebook.splits = (P.codebook.splits || []).filter((w) => w !== el.dataset.w); changed({ derive: true }); break;
+    case "exadd": addExclusions(); break;
+    case "exdel": P.codebook.exclusions = P.codebook.exclusions.filter((w) => w !== el.dataset.w); changed({ derive: true }); break;
+    case "mincount-auto": P.codebook.minCount = null; changed({ derive: true }); break;
+    case "dl-codebook": downloadCodebook(); break;
+    case "load-codebook": $("#fileCodebook").click(); break;
+    case "reset-codebook": if (confirm("Reset to the starter codebook? Your own tags and excluded words will be replaced, and your tags will be removed from comments.")) { P.codebook = starterCodebook(); UI.f.tag = null; changed({ derive: true }); } break;
+    case "dl-docx": el.disabled = true; el.textContent = "Building…"; try { await buildDocx(); } catch (err) { console.error(err); alert("The Word document couldn't be built: " + err.message); } el.disabled = false; el.textContent = "Download Word document"; break;
+    case "dl-cloud": { const col = +el.dataset.col; const { cv } = cloudCanvas(col); download(await canvasPng(cv), `${slug(P.title)}-${slug(colLabel(col))}-word-cloud.png`); break; }
+    case "dl-csv": downloadCsv(); break;
+    case "dl-xlsx": downloadXlsx(); break;
+  }
+});
+function addExclusions() {
+  const inp = $("#exadd"); if (!inp) return;
+  const words = parseTerms(inp.value); if (!words.length) return;
+  const have = new Set(P.codebook.exclusions.map((w) => w.toLowerCase()));
+  words.forEach((w) => { if (!have.has(w.toLowerCase())) P.codebook.exclusions.push(w); });
+  changed({ derive: true });
+  const again = $("#exadd"); if (again) again.focus();
+}
+document.addEventListener("change", (e) => {
+  const el = e.target;
+  if (el.id === "fileMain" && el.files[0]) { openFile(el.files[0]); return; }
+  if (el.id === "fileProject" && el.files[0]) { openProjectFile(el.files[0]); el.value = ""; return; }
+  if (el.id === "fileCodebook" && el.files[0]) { loadCodebook(el.files[0]); el.value = ""; return; }
+  const k = el.dataset.chg; if (!k) return;
+  if (k === "role") { const c = T.cols[+el.dataset.i]; c.role = el.value; if (!c.edited) c.label = el.value === "context" ? c.d.context : c.d.comment; render(); }
+  else if (k === "sheet") { T.sheetIdx = +el.value; T.cols = draftFromSheet(T.sheets[T.sheetIdx]); render(); }
+  else if (k === "codebook") { T.codebook = el.value; }
+  else if (k === "fcol") { UI.f.col = el.value; UI.browseLimit = 60; render(); }
+  else if (k === "fctx") { UI.f.ctx[el.dataset.i] = el.value; UI.browseLimit = 60; render(); }
+  else if (k === "merge" && el.value) { const from = D.tags.get(el.dataset.id), into = D.tags.get(el.value); if (confirm(`Merge “${from.name}” into “${into.name}”? Comments tagged “${from.name}” will be tagged “${into.name}” instead.`)) mergeTags(el.dataset.id, el.value); else el.value = ""; }
+  else if (k === "mincount") { const n = parseInt(el.value, 10); P.codebook.minCount = n >= 2 ? n : null; changed({ derive: true }); }
+  else if (k === "setting") { P.settings[el.dataset.k] = el.checked; saveSoon(); render(); }
+  else if (k === "setting-sel") { P.settings[el.dataset.k] = el.value; saveSoon(); render(); }
+});
+const searchLater = debounce(() => { const m = $("#main"); if (m) { m.innerHTML = UI.tab === "review" ? viewReview() : viewBrowse(); } }, 200);
+document.addEventListener("input", (e) => {
+  const el = e.target, k = el.dataset.inp; if (!k) return;
+  if (k === "label") { const c = T.cols[+el.dataset.i]; c.label = el.value; c.edited = true; }
+  else if (k === "title") T.title = el.value;
+  else if (k === "ptitle") { P.title = el.value; saveSoon(); }
+  else if (k === "fq") { UI.f.q = el.value; UI.browseLimit = 60; searchLater(); }
+  else if (k === "tagfind") { UI.tagFind = el.value; const box = $("#sidetags"); if (box) { const tmp = document.createElement("div"); tmp.innerHTML = viewSide(); box.innerHTML = tmp.querySelector("#sidetags").innerHTML; } }
+});
+document.addEventListener("toggle", (e) => { if (e.target.dataset && e.target.dataset.tog === "others") UI.othersOpen = e.target.open; }, true);
+
+document.addEventListener("keydown", (e) => {
+  const el = e.target;
+  // Enter in tag inputs adds the tag
+  if (el.dataset && (el.dataset.key === "addtag" || el.dataset.key === "addtag-b") && e.key === "Enter") {
+    e.preventDefault();
+    const c = el.dataset.key === "addtag" ? D.byId.get(UI.queue[UI.qpos]) : D.byId.get(el.dataset.cid);
+    const tid = tagFromInput(el.value);
+    if (c && tid) { addTag(c, tid); changed(); const again = el.dataset.key === "addtag" ? $("#addtag") : null; if (again) again.focus(); }
+    return;
+  }
+  if (el.dataset && el.dataset.key === "addtag" && e.key === "Escape") { el.value = ""; el.blur(); return; }
+  if (el.dataset && el.dataset.key === "exadd" && e.key === "Enter") { e.preventDefault(); addExclusions(); return; }
+  if (UI.view !== "work" || UI.tab !== "review") return;
+  if (e.ctrlKey || e.metaKey || e.altKey) return;
+  if (/^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName) || $("#dlg").open) return;
+  if (el.tagName === "BUTTON" && e.key === "Enter") return; // let buttons act normally
+  const c = D.byId.get(UI.queue[UI.qpos]);
+  if (e.key === "ArrowRight" || e.key === "j") { e.preventDefault(); go(1); return; }
+  if (e.key === "ArrowLeft" || e.key === "k") { e.preventDefault(); go(-1); return; }
+  if (!c) return;
+  if (e.key === "Enter") { e.preventDefault(); if (!isSkipped(c)) confirmAll(c); recount(); saveSoon(); go(1); return; }
+  if (e.key === "s" || e.key === "S") { e.preventDefault(); const was = isSkipped(c); toggleSkip(c); recount(); saveSoon(); if (!was) go(1); else render(); return; }
+  if (e.key === "t" || e.key === "T" || e.key === "/") { e.preventDefault(); const i = $("#addtag"); if (i) i.focus(); return; }
+  if (/^[1-9]$/.test(e.key) && UI.keymap) {
+    const slot = UI.keymap[+e.key - 1]; if (!slot) return;
+    e.preventDefault();
+    if (slot.on) removeTag(c, slot.id); else addTag(c, slot.id);
+    changed();
+  }
+});
+
+/* drag and drop on landing */
+document.addEventListener("dragover", (e) => { const d = $("#drop"); if (d) { e.preventDefault(); d.classList.add("over"); } });
+document.addEventListener("dragleave", (e) => { const d = $("#drop"); if (d && !d.contains(e.relatedTarget)) d.classList.remove("over"); });
+document.addEventListener("drop", (e) => { const d = $("#drop"); if (!d) return; e.preventDefault(); d.classList.remove("over"); const f = e.dataTransfer.files[0]; if (f) openFile(f); });
+document.addEventListener("click", (e) => { document.querySelectorAll("details.menu[open]").forEach((m) => { if (!m.contains(e.target)) m.open = false; }); });
+
+window.addEventListener("DOMContentLoaded", render);
+</script>
+</body>
+</html>
