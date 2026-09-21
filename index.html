@@ -24,6 +24,9 @@
   --plum: #93278F;
   --mark: #FFE48A;
   --skip: #9AA3B2;
+  --pos: #16733C;
+  --neg: #B42318;
+  --mix: #92600A;
   --danger: #B42318;
   --ui: "Segoe UI Variable Text", "Segoe UI", system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif;
   --read: "Source Serif 4", Georgia, "Times New Roman", serif;
@@ -99,7 +102,7 @@ kbd { font: 600 0.75rem var(--ui); border: 1px solid var(--line-2); border-botto
 .error { color: var(--danger); margin-top: 14px; }
 
 /* Setup */
-.setup { max-width: 1120px; margin: 32px auto 64px; padding: 0 20px; }
+.setup { max-width: 1320px; margin: 32px auto 64px; padding: 0 20px; }
 .setup-head { display: flex; align-items: flex-end; gap: 20px; flex-wrap: wrap; margin-bottom: 20px; }
 .setup-head .grow { flex: 1; min-width: 260px; }
 .note { background: var(--navy-soft); border-radius: 8px; padding: 10px 14px; margin: 0 0 16px; color: var(--ink); }
@@ -110,6 +113,11 @@ textarea.input { resize: vertical; }
 .fields-row { display: flex; gap: 16px; flex-wrap: wrap; margin-bottom: 20px; }
 .fields-row .field { min-width: 240px; flex: 1; }
 .coltable-wrap { overflow-x: auto; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; }
+.coltable-wrap table { min-width: 1080px; }
+.coltable-wrap td.colname { min-width: 180px; }
+.coltable-wrap td.example { min-width: 190px; }
+.coltable-wrap td .input { min-width: 168px; }
+.coltable-wrap select.input { min-width: 200px; }
 table { border-collapse: collapse; width: 100%; }
 th { text-align: left; font-size: 0.8rem; font-weight: 600; color: var(--ink-2); padding: 10px 12px; border-bottom: 1px solid var(--line); white-space: nowrap; }
 td { padding: 10px 12px; border-bottom: 1px solid var(--line); vertical-align: middle; }
@@ -172,6 +180,22 @@ mark { background: linear-gradient(transparent 14%, var(--mark) 14%, var(--mark)
 .chip .n { font-size: 0.75rem; opacity: .75; font-variant-numeric: tabular-nums; }
 .chip .x { display: grid; place-items: center; width: 18px; height: 18px; border-radius: 50%; }
 .chip:hover .x { background: rgba(127,127,127,.25); }
+.chip.tone { padding: 3px 12px; }
+.chip.tone.off { border-color: var(--line-2); color: var(--ink-3); }
+.chip.tone.off:hover { color: var(--ink); }
+.chip.tone.sugg { border-style: dashed; }
+.chip.t-pos { border-color: var(--pos); color: var(--pos); }
+.chip.t-pos.conf { background: var(--pos); border-color: var(--pos); color: #fff; }
+.chip.t-neg { border-color: var(--neg); color: var(--neg); }
+.chip.t-neg.conf { background: var(--neg); border-color: var(--neg); color: #fff; }
+.chip.t-mix { border-color: var(--mix); color: var(--mix); }
+.chip.t-mix.conf { background: var(--mix); border-color: var(--mix); color: #fff; }
+.chip.tone.off:hover { border-color: currentColor; }
+.dot { width: 9px; height: 9px; border-radius: 50%; flex: none; background: var(--line-2); }
+.dot.t-pos { background: var(--pos); }
+.dot.t-neg { background: var(--neg); }
+.dot.t-mix { background: var(--mix); }
+.dot.t-unmarked { background: var(--line-2); }
 .chip.add { border-color: var(--line-2); color: var(--ink-2); padding: 3px 12px; }
 .chip.add:hover { border-color: var(--navy); color: var(--navy); }
 .chip.add .n { margin-right: 2px; }
@@ -300,10 +324,27 @@ const STARTER_TAGS = [
 const BLANK_EXACT = new Set(["", "n a", "na", "n", "none", "nothing", "no", "nope", "nah", "not applicable", "no comment", "no comments", "no change", "no changes", "no suggestion", "no suggestions", "no recommendation", "no recommendations", "nothing to add", "nothing to add here", "nothing else", "nothing further", "nothing to say", "nothing at this time", "none at this time", "not at this time", "nothing really", "none really", "not really", "no thanks", "no thank you", "none thank you", "nothing thank you", "cant think of anything", "cant think of any", "i cant think of anything", "i cant think of any", "i dont have anything", "i dont have any", "not sure", "idk", "x", "same", "same as above", "see above", "nothing comes to mind", "none that i can think of", "nothing that i can think of", "no other comments", "no additional comments", "no further comments", "nothing additional", "none so far", "nothing so far"]);
 
 const PALETTES = {
+  tone: { name: "Positive and negative", colors: ["#002F87"], tone: true },
   cetl: { name: "CETL", colors: ["#002F87", "#1E8EF7", "#93278F", "#FF620B", "#E52626"] },
   fellows: { name: "Fellows", colors: ["#1B75BB", "#062F87", "#652D90", "#9E1F63"] },
   navy: { name: "Navy only", colors: ["#002F87"] }
 };
+
+/* Tone: how a comment reads, kept separate from tags but shown alongside them. */
+const TONES = {
+  pos: { key: "pos", name: "Positive", short: "Positive", verb: "positive", k: "P", cloud: ["#0E5C2F", "#16733C", "#1E8C4A"] },
+  neg: { key: "neg", name: "Negative", short: "Negative", verb: "negative", k: "N", cloud: ["#8C1810", "#A82317", "#C4321F"] },
+  mix: { key: "mix", name: "Mixed", short: "Mixed", verb: "mixed", k: "M", cloud: [] }
+};
+const TONE_KEYS = ["pos", "neg", "mix"];
+
+/* Cue words for suggesting a tone. Matched on word stems, so "loved" finds "love". */
+const TONE_CUES = {
+  pos: ["thank", "thanks", "thank you", "kudos", "appreciate", "appreciated", "grateful", "love", "loved", "enjoy", "enjoyed", "great", "great job", "great work", "well done", "good", "good job", "excellent", "amazing", "awesome", "fantastic", "wonderful", "terrific", "superb", "outstanding", "perfect", "helpful", "so helpful", "very helpful", "helped a lot", "useful", "informative", "beneficial", "engaging", "valuable", "insightful", "thorough", "well organized", "well presented", "well explained", "easy to follow", "made sense", "clear", "best", "fun", "nice", "solid", "pleased", "impressed", "exceptional", "keep up", "spot on", "phenomenal", "delightful", "top notch", "learned a lot", "worth it"],
+  neg: ["too fast", "too quick", "too long", "too much", "too short", "too many", "rushed", "rush", "confusing", "confused", "confusion", "hard to follow", "difficult to follow", "hard to hear", "hard to see", "trouble", "issue", "issues", "technical issues", "problem", "problems", "glitch", "glitchy", "froze", "frozen", "laggy", "spotty", "boring", "bored", "tedious", "frustrating", "frustrated", "disappointing", "disappointed", "overwhelming", "overwhelmed", "unclear", "not clear", "lost", "slow down", "cut out", "cutting out", "couldnt hear", "could not hear", "couldnt see", "couldnt follow", "didnt work", "did not work", "wasnt working", "not working", "waste", "poor", "worst", "lacking", "lacked", "dry", "monotone", "drag", "dragged", "drawn out", "repetitive", "chaotic", "unable", "struggled", "struggle", "wish", "would have liked", "needs work", "needs improvement", "need more", "more time", "ran out of time", "not enough", "should have", "would prefer", "suggest", "suggestion", "improve", "improvement", "recommend adding", "please add"]
+};
+/* A cue right after one of these is ignored: "nothing was confusing" isn't negative. */
+const TONE_NEGATORS = new Set(["not", "no", "never", "nothing", "none", "cant", "cannot", "didnt", "dont", "wasnt", "werent", "isnt", "arent", "hardly", "barely", "without", "nope"]);
 
 const LS_PROJECT = "commentSorter.project.v1";
 const LS_CODEBOOK = "commentSorter.codebook.v1";
@@ -412,11 +453,11 @@ let D = null;   // everything derived from P
 let T = null;   // setup draft
 const UI = {
   view: "landing", tab: "review",
-  f: { status: "todo", col: "all", tag: null, ctx: {}, q: "" },
+  f: { status: "todo", col: "all", tag: null, tone: null, ctx: {}, q: "" },
   queue: [], qpos: 0, qkey: "", browseLimit: 60, tagFind: "",
   save: "saved", err: "", clouds: {}
 };
-const DEFAULT_SETTINGS = { includeSuggested: false, includeUntagged: true, includeContext: true, includeClouds: true, sortTags: "count", palette: "cetl" };
+const DEFAULT_SETTINGS = { includeSuggested: false, includeUntagged: true, includeContext: true, includeClouds: true, sortTags: "count", palette: "tone" };
 
 function starterCodebook() {
   return { exclusions: STARTER_EXCLUSIONS.slice(), tags: STARTER_TAGS.map((t) => ({ id: "t:" + uid(), name: t.name, terms: t.terms.slice() })), splits: [], minCount: null };
@@ -489,11 +530,20 @@ function defaultLabels(header, s) {
   const context = s.categorical && !s.likert && s.avg > 12 ? "" : (h.length > 40 ? h.slice(0, 37).trim() + "…" : h);
   return { comment, context };
 }
+/* A first guess at a question's tone, from how the question is worded. */
+function guessTone(header) {
+  const h = humanize(header).toLowerCase();
+  if (/improve|improvement|change|better|instead|suggestion|suggest|challeng|difficult|frustrat|confus|problem|issue|barrier|obstacle|missing|less |drop|remove|wish/.test(h)) return "neg";
+  if (/most helpful|helpful|useful|valuable|engaging|enjoy|like best|liked|best part|favorite|favourite|strength|went well|worked well|appreciate|benefit|takeaway|take away/.test(h)) return "pos";
+  return null;
+}
 function draftFromSheet(sheet, prevCols) {
   const cols = sheet.headers.map((h, i) => {
     const s = colStats(sheet.rows, i), d = defaultLabels(h, s);
     const prev = prevCols && prevCols[i];
-    return { role: prev ? prev.role : (s.comment ? "comment" : "skip"), label: prev ? prev.label : d.comment, edited: !!prev, d, s };
+    const role = prev ? prev.role : (s.comment ? "comment" : "skip");
+    const tone = prev && prev.tone !== undefined ? prev.tone : guessTone(h); // projects from before tone existed still get the guess
+    return { role, label: prev ? prev.label : d.comment, edited: !!prev, tone, d, s };
   });
   return cols;
 }
@@ -525,7 +575,7 @@ async function openProjectFile(file) {
 
 function startProject() {
   const sheet = T.sheets[T.sheetIdx];
-  const cols = T.cols.map((c) => ({ role: c.role, label: (c.label || "").trim() || (c.role === "comment" ? c.d.comment : "") }));
+  const cols = T.cols.map((c) => ({ role: c.role, label: (c.label || "").trim() || (c.role === "comment" ? c.d.comment : ""), tone: c.role === "comment" ? (c.tone || null) : null }));
   if (T.editing && P) {
     P.cols = cols; P.title = T.title.trim() || P.title;
   } else {
@@ -535,14 +585,14 @@ function startProject() {
       headers: sheet.headers, rows: sheet.rows, rowNums: sheet.rowNums, note: sheet.note, cols, status: {}, codebook: cb,
       settings: Object.assign({}, DEFAULT_SETTINGS), created: new Date().toISOString() };
   }
-  T = null; resetFilters(); derive(); UI.view = "work"; UI.tab = "review"; saveNow(); render();
+  T = null; resetFilters(); derive(); UI.view = "work"; UI.tab = "review"; saveNow(); render(); window.scrollTo({ top: 0 });
 }
 function editColumns() {
   const sheet = { name: P.sheetName, headers: P.headers, rows: P.rows, rowNums: P.rowNums, note: P.note };
   T = { fileName: P.fileName, sheets: [sheet], sheetIdx: 0, title: P.title, cols: draftFromSheet(sheet, P.cols), codebook: "keep", editing: true };
-  UI.view = "setup"; render();
+  UI.view = "setup"; render(); window.scrollTo({ top: 0 });
 }
-function resetFilters() { UI.f = { status: "todo", col: "all", tag: null, ctx: {}, q: "" }; UI.qkey = ""; UI.browseLimit = 60; UI.clouds = {}; }
+function resetFilters() { UI.f = { status: "todo", col: "all", tag: null, tone: null, ctx: {}, q: "" }; UI.qkey = ""; UI.browseLimit = 60; UI.clouds = {}; }
 
 /* ---------- Derivation ---------- */
 const TOK_CACHE = new Map();
@@ -583,6 +633,34 @@ function derive() {
       else { if (!defPhr.has(s[0])) defPhr.set(s[0], []); defPhr.get(s[0]).push({ seq: s, id: t.id }); }
     });
   });
+
+  // tone cues
+  const cueUni = new Map(), cuePhr = new Map();
+  for (const tk of ["pos", "neg"]) for (const cue of TONE_CUES[tk]) {
+    const s = seqOf(cue); if (!s.length) continue;
+    if (s.length === 1) { if (!cueUni.has(s[0])) cueUni.set(s[0], tk); }
+    else { if (!cuePhr.has(s[0])) cuePhr.set(s[0], []); cuePhr.get(s[0]).push({ seq: s, tk }); }
+  }
+  for (const c of comments) {
+    const cues = { pos: [], neg: [] }, K = c.keys;
+    for (let i = 0; i < K.length; i++) {
+      let hit = null, len = 1;
+      const phrases = cuePhr.get(K[i]) || [];
+      for (const { seq, tk } of phrases) {
+        if (seq.length > len && i + seq.length <= K.length && seq.every((s, j) => K[i + j] === s)) { hit = tk; len = seq.length; }
+      }
+      if (!hit && cueUni.has(K[i])) hit = cueUni.get(K[i]);
+      if (!hit) continue;
+      const before = i > 0 ? c.toks[i - 1].low : "";
+      const before2 = i > 1 ? c.toks[i - 2].low : "";
+      if (TONE_NEGATORS.has(before) || (TONE_NEGATORS.has(before2) && /^(was|were|is|are|be|been|really|very|at|that|it)$/.test(before))) { i += len - 1; continue; }
+      const phrase = c.text.slice(c.toks[i].start, c.toks[i + len - 1].end).toLowerCase();
+      if (!cues[hit].includes(phrase)) cues[hit].push(phrase);
+      i += len - 1;
+    }
+    c.cues = cues;
+    c.toneSug = cues.pos.length && cues.neg.length ? "mix" : cues.pos.length ? "pos" : cues.neg.length ? "neg" : (colTone(c.c) || null);
+  }
 
   // frequency stats over non-blank comments
   const live = comments.filter((c) => !c.blank);
@@ -699,6 +777,17 @@ function hasTag(c, id, includeSugg = true) {
   if ((s.c || []).includes(id)) return true;
   return includeSugg && c.matches.has(id) && !(s.r || []).includes(id);
 }
+function colTone(idx) { const c = P.cols[idx]; return (c && c.tone) || null; }
+/* A comment's tone: what you set, or the suggestion until you set one. */
+function toneOf(c) {
+  const t = st(c.id).t;
+  if (t) return { tone: t === "none" ? null : t, set: true };
+  return { tone: c.toneSug || null, set: false };
+}
+function setTone(c, key) {
+  stw(c.id).t = toneOf(c).tone === key ? "none" : key;
+}
+function effTone(c) { return isSkipped(c) ? null : toneOf(c).tone; }
 function recount() {
   const counts = new Map();
   for (const c of D.comments) {
@@ -741,6 +830,10 @@ function passes(c, f, ignore = {}) {
     if (f.status === "untagged") { if (sk) return false; const t = tagsOf(c); if (t.conf.length || t.sugg.length) return false; }
   }
   for (const [ci, val] of Object.entries(f.ctx)) if (val !== "" && (P.rows[c.r][ci] || "") !== val) return false;
+  if (!ignore.tone && f.tone) {
+    const t = effTone(c);
+    if (f.tone === "unmarked" ? t : t !== f.tone) return false;
+  }
   if (!ignore.tag && f.tag && !hasTag(c, f.tag)) return false;
   if (f.q && !c.text.toLowerCase().includes(f.q.toLowerCase())) return false;
   return true;
@@ -757,6 +850,7 @@ function buildQueue(keepId) {
 function confirmAll(c) {
   const s = stw(c.id), { conf, sugg } = tagsOf(c);
   s.c = [...conf, ...sugg]; s.v = 1;
+  const t = toneOf(c); if (!t.set && t.tone) s.t = t.tone;
 }
 function removeTag(c, id) {
   const s = stw(c.id);
@@ -961,6 +1055,9 @@ function viewSetup() {
       <td class="num" style="text-align:right">${s.n.toLocaleString()}</td>
       <td><div class="seg" role="radiogroup" aria-label="Use ${esc(sheet.headers[i])} as">${roles.map(([v, l]) => `<label><input type="radio" name="role${i}" value="${v}" data-chg="role" data-i="${i}" ${c.role === v ? "checked" : ""}><span>${l}</span></label>`).join("")}</div></td>
       <td>${c.role === "skip" ? "" : `<input class="input" data-inp="label" data-i="${i}" value="${esc(c.label)}" aria-label="Label for ${esc(sheet.headers[i])}" placeholder="${c.role === "comment" ? "Label for this question" : "Optional short label"}">`}</td>
+      <td>${c.role !== "comment" ? "" : `<select class="input" data-chg="coltone" data-i="${i}" aria-label="Starting tone for ${esc(sheet.headers[i])}">
+        <option value="" ${!c.tone ? "selected" : ""}>From the words used</option>
+        ${TONE_KEYS.map((k) => `<option value="${k}" ${c.tone === k ? "selected" : ""}>${TONES[k].name}</option>`).join("")}</select>`}</td>
     </tr>`;
   }).join("");
   const cb = savedCodebook();
@@ -976,8 +1073,9 @@ function viewSetup() {
       ${!T.editing && cb ? `<label class="field"><span>Tags and excluded words</span><select class="input" data-chg="codebook"><option value="saved" ${T.codebook === "saved" ? "selected" : ""}>Continue with my tags from last time</option><option value="starter" ${T.codebook === "starter" ? "selected" : ""}>Start fresh with the starter set</option></select></label>` : ""}
     </div>
     <p class="muted" style="margin-bottom:12px"><strong>Comments</strong> columns get tagged; each becomes its own section in the Word document, using the label you give it. <strong>Context</strong> columns appear alongside each comment and can be used as filters. Leave a context label blank to show just the value.</p>
+    <p class="muted" style="margin-bottom:12px"><strong>Starting tone</strong> is where a question has an obvious answer: everything under “what was most helpful” is positive unless the wording says otherwise. Words in the comment win over the starting tone, and you can change any comment as you review.</p>
     <div class="coltable-wrap"><table>
-      <thead><tr><th>Column</th><th>Example</th><th style="text-align:right">Responses</th><th>Use as</th><th>Label</th></tr></thead>
+      <thead><tr><th>Column</th><th>Example</th><th style="text-align:right">Responses</th><th>Use as</th><th>Label</th><th>Starting tone</th></tr></thead>
       <tbody>${rows}</tbody>
     </table></div>
     <div class="setup-foot">
@@ -1009,6 +1107,17 @@ function viewSide() {
     const t = tagsOf(c); if (!t.conf.length && !t.sugg.length) cnt.untagged++;
   }
   const statuses = [["todo", "To review"], ["untagged", "Untagged"], ["reviewed", "Reviewed"], ["skipped", "Skipped"], ["all", "All comments"]];
+  // tone counts ignore the tone filter itself, so the numbers stay stable while you switch between them
+  const tcnt = { pos: 0, neg: 0, mix: 0, unmarked: 0 };
+  let toneTotal = 0;
+  for (const c of D.comments.filter((c) => passes(c, f, { tone: true }))) {
+    toneTotal++;
+    tcnt[effTone(c) || "unmarked"]++;
+  }
+  const toneSel = `<div><h3>Tone</h3><div class="statuslist">
+    <button data-act="ftone" data-v="" aria-pressed="${!f.tone}">Any tone<span class="num">${toneTotal.toLocaleString()}</span></button>
+    ${[...TONE_KEYS, "unmarked"].map((k) => `<button data-act="ftone" data-v="${k}" aria-pressed="${f.tone === k}"><span class="dot t-${k}" aria-hidden="true"></span>${k === "unmarked" ? "Not marked" : TONES[k].name}<span class="num">${tcnt[k].toLocaleString()}</span></button>`).join("")}
+  </div></div>`;
   const cCols = commentCols();
   const qSel = cCols.length > 1 ? `<label class="field"><span>Question</span><select class="input" data-chg="fcol"><option value="all">All questions</option>${cCols.map((c) => `<option value="${c.idx}" ${String(f.col) === String(c.idx) ? "selected" : ""}>${esc(colLabel(c.idx))}</option>`).join("")}</select></label>` : "";
   const ctxSel = contextCols().map((cc) => {
@@ -1032,6 +1141,7 @@ function viewSide() {
     </div>`).join("") : `<p class="muted small">No tags match.</p>`;
   return `
     <div><h3>Show</h3><div class="statuslist">${statuses.map(([k, l]) => `<button data-act="fstatus" data-v="${k}" aria-pressed="${f.status === k}">${l}<span class="num">${cnt[k].toLocaleString()}</span></button>`).join("")}</div></div>
+    ${toneSel}
     ${qSel || ctxSel ? `<div style="display:grid;gap:12px">${qSel}${ctxSel}</div>` : ""}
     <label class="field"><span>Search comments</span><input class="input" type="search" data-inp="fq" value="${esc(f.q)}" placeholder="Words or phrases"></label>
     <div>
@@ -1060,6 +1170,18 @@ function ctxHtml(c) {
 function chipOrder(c, conf, sugg) {
   const first = (id) => { const m = c.matches.get(id); return m ? c.toks[m[0][0]].start : 1e9; };
   return [...conf.map((id) => ({ id, k: "conf" })), ...sugg.map((id) => ({ id, k: "sugg" }))].sort((a, b) => first(a.id) - first(b.id));
+}
+function toneControl(c, cid) {
+  const { tone, set } = toneOf(c);
+  const cues = !set && tone && c.cues ? (c.cues[tone] || (tone === "mix" ? [...c.cues.pos, ...c.cues.neg] : [])) : [];
+  const why = cues.length ? `Suggested from “${cues.slice(0, 3).join("”, “")}”. Select to confirm.` : "Suggested for this question. Select to confirm.";
+  const at = cid ? ` data-cid="${esc(cid)}"` : "";
+  const chips = TONE_KEYS.map((k) => {
+    const on = tone === k;
+    const title = on ? (set ? "Select to unmark" : why) : `Mark as ${TONES[k].verb}`;
+    return `<button class="chip tone t-${k} ${on ? (set ? "conf" : "sugg") : "off"}" data-act="tone" data-v="${k}"${at} aria-pressed="${on}" title="${esc(title)}">${cid ? "" : `<span class="n">${TONES[k].k}</span>`}${TONES[k].name}</button>`;
+  }).join("");
+  return chips + (tone ? "" : `<span class="chips-empty">Not marked</span>`);
 }
 function quickPicks(c, exclude, n) {
   if (n <= 0) return [];
@@ -1098,6 +1220,7 @@ function viewReview() {
       <p class="comment-text" id="ctext">${highlight(c, [...conf, ...sugg])}</p>
       ${ctxHtml(c)}
       <div class="tagzone">
+        <div class="chips"><span class="zlabel">Tone</span>${toneControl(c)}</div>
         <div class="chips"><span class="zlabel">Tags</span>${chipHtml}</div>
         <div class="addrow"><span class="zlabel">Add</span><input class="input" id="addtag" list="taglist" placeholder="Type a tag name" aria-label="Add a tag" data-key="addtag">${pickHtml ? `<div class="chips">${pickHtml}</div>` : ""}</div>
       </div>
@@ -1109,7 +1232,8 @@ function viewReview() {
       <button class="btn primary" data-act="confirm">Confirm and next <kbd>Enter</kbd></button>
     </div>
     <div class="keys" aria-label="Keyboard shortcuts">
-      <span><kbd>Enter</kbd> confirm tags and go to next</span><span><kbd>1</kbd>–<kbd>9</kbd> remove or add a numbered tag</span>
+      <span><kbd>Enter</kbd> confirm and go to next</span><span><kbd>1</kbd>–<kbd>9</kbd> remove or add a numbered tag</span>
+      <span><kbd>P</kbd><kbd>N</kbd><kbd>M</kbd> positive, negative, mixed</span>
       <span><kbd>T</kbd> type a new tag</span><span><kbd>S</kbd> skip</span><span><kbd>←</kbd><kbd>→</kbd> previous and next</span>
     </div>
   </div>`;
@@ -1127,6 +1251,7 @@ function viewBrowse() {
       <div class="top"><span class="q">${esc(colLabel(c.c))}</span>${s.v && !sk ? `<span class="badge rev">Reviewed</span>` : ""}${sk ? `<span class="badge">Skipped</span>` : ""}</div>
       <p class="comment-text sm">${highlight(c, [...conf, ...sugg])}</p>
       ${ctxHtml(c)}
+      ${sk ? "" : `<div class="chips">${toneControl(c, c.id)}</div>`}
       ${sk ? "" : `<div class="chips">${chips || `<span class="chips-empty">No tags</span>`}</div>`}
       <div class="foot">
         ${sk ? "" : `<input class="input" list="taglist" placeholder="Add a tag" aria-label="Add a tag to this comment" data-key="addtag-b" data-cid="${esc(c.id)}">`}
@@ -1258,7 +1383,7 @@ function viewExport() {
           ${check("includeClouds", "Include word clouds", "One per question, below its heading.")}
           <label class="field"><span>Order tags by</span><select class="input" data-chg="setting-sel" data-k="sortTags"><option value="count" ${s.sortTags === "count" ? "selected" : ""}>Most comments first</option><option value="alpha" ${s.sortTags === "alpha" ? "selected" : ""}>A to Z</option></select></label>
         </div>
-        <p class="small muted">${cCols.length > 1 ? "Each question is a Heading 2 and each tag a Heading 3 with its comments as bullets." : "Each tag is a Heading 2 with its comments as bullets."} Comments with several tags appear under each one.</p>
+        <p class="small muted">${cCols.length > 1 ? "Each question is a Heading 2 and each tag a Heading 3 with its comments as bullets." : "Each tag is a Heading 2 with its comments as bullets."} Comments with several tags appear under each one. Where a tag holds more than one tone, its bullets are grouped into positive, negative, mixed, and not marked.</p>
         <div class="dlrow"><button class="btn primary" data-act="dl-docx">Download Word document</button></div>
       </div>
     </section>
@@ -1266,7 +1391,9 @@ function viewExport() {
       <div class="panel-h"><h2>Word clouds</h2><span class="spacer"></span>
         <label class="inline small"><span class="muted">Colors</span><select class="input" style="width:auto" data-chg="setting-sel" data-k="palette">${Object.entries(PALETTES).map(([k, p]) => `<option value="${k}" ${s.palette === k ? "selected" : ""}>${p.name}</option>`).join("")}</select></label>
       </div>
-      <div class="panel-b"><p class="small muted">Tag size reflects how many comments have that tag. Clouds use the same tags as the Word document, so turn on suggested tags if you want a preview before you finish reviewing.</p>
+      <div class="panel-b"><p class="small muted">${PALETTES[s.palette].tone
+        ? "A tag appears once for each tone, sized by how many positive or negative comments it shows up in, so “pace” can be small in green and large in red. Comments marked mixed or left unmarked aren't included."
+        : "Tag size reflects how many comments have that tag, whatever their tone."} Clouds use the same tags as the Word document, so turn on suggested tags if you want a preview before you finish reviewing.</p>
         <div class="clouds">${cCols.map((c) => `<figure class="cloud" style="margin:0"><canvas id="cloud-${c.idx}" width="1600" height="900" role="img" aria-label="Word cloud for ${esc(colLabel(c.idx))}"></canvas><figcaption class="cap"><span>${esc(colLabel(c.idx))}</span><span class="spacer"></span><button class="btn sm" data-act="dl-cloud" data-col="${c.idx}">Download PNG</button></figcaption></figure>`).join("")}</div>
       </div>
     </section>
@@ -1292,9 +1419,14 @@ function exportGroups(colIdx) {
     if (!ids.length) { untagged.push(c); continue; }
     for (const id of ids) { if (!groups.has(id)) groups.set(id, []); groups.get(id).push(c); }
   }
-  let arr = [...groups.entries()].map(([id, list]) => ({ id, name: D.tags.get(id).name, list: list.sort((a, b) => a.r - b.r) }));
+  let arr = [...groups.entries()].map(([id, list]) => ({ id, name: D.tags.get(id).name, list: list.sort((a, b) => a.r - b.r), tones: splitByTone(list) }));
   arr.sort(s.sortTags === "alpha" ? (a, b) => a.name.localeCompare(b.name) : (a, b) => b.list.length - a.list.length || a.name.localeCompare(b.name));
-  return { groups: arr, untagged, total: live.length, skipped: cs.length - live.length };
+  return { groups: arr, untagged, untaggedTones: splitByTone(untagged), total: live.length, skipped: cs.length - live.length };
+}
+function splitByTone(list) {
+  const out = { pos: [], neg: [], mix: [], none: [] };
+  for (const c of list) out[toneOf(c).tone || "none"].push(c);
+  return out;
 }
 function ctxString(c) {
   return contextCols().map((cc) => { const v = P.rows[c.r][cc.idx]; return v ? (cc.label ? `${cc.label}: ${v}` : v) : null; }).filter(Boolean).join("; ");
@@ -1302,18 +1434,20 @@ function ctxString(c) {
 
 /* ---------- Word clouds ---------- */
 function mulberry32(a) { return function () { a |= 0; a = (a + 0x6D2B79F5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
-function drawCloud(canvas, items, colors) {
+function drawCloud(canvas, items, colors, legend) {
   const W = canvas.width, H = canvas.height, ctx = canvas.getContext("2d");
   ctx.fillStyle = "#FFFFFF"; ctx.fillRect(0, 0, W, H);
   if (!items.length) {
     ctx.fillStyle = "#7C879A"; ctx.font = `400 40px ${cloudFont()}`; ctx.textAlign = "center"; ctx.fillText("No tags yet", W / 2, H / 2); ctx.textAlign = "left";
     return false;
   }
+  const legPad = legend && legend.length ? 64 : 0;
+  const top = 10, bottom = H - 10 - legPad, cy = (top + bottom) / 2, span = bottom - top;
   const maxC = items[0].n, minC = items[items.length - 1].n;
   let scale = 1, placed = [];
   for (let attempt = 0; attempt < 9; attempt++) {
     placed = []; let failed = false;
-    const maxF = Math.min(170, H / (items.length < 5 ? 3 : 4.4)) * scale, minF = Math.max(20, maxF * 0.2);
+    const maxF = Math.min(170, span / (items.length < 5 ? 2.8 : 4.2)) * scale, minF = Math.max(20, maxF * 0.2);
     const rnd = mulberry32(7);
     for (let i = 0; i < items.length; i++) {
       const it = items[i];
@@ -1327,31 +1461,63 @@ function drawCloud(canvas, items, colors) {
       let spot = null;
       for (let t = 0; t < 140; t += 0.045) {
         const r = 4.2 * t;
-        const x = W / 2 + r * Math.cos(t + phase) * (W / H) - w / 2;
-        const y = H / 2 + r * Math.sin(t + phase) - h / 2;
-        if (x < 10 || y < 10 || x + w > W - 10 || y + h > H - 10) { if (r > W) break; continue; }
+        const x = W / 2 + r * Math.cos(t + phase) * (W / span) - w / 2;
+        const y = cy + r * Math.sin(t + phase) - h / 2;
+        if (x < 10 || y < top || x + w > W - 10 || y + h > bottom) { if (r > W) break; continue; }
         const box = { x: x - pad, y: y - pad, w: w + pad * 2, h: h + pad * 2 };
         if (placed.every((p) => box.x + box.w <= p.box.x || p.box.x + p.box.w <= box.x || box.y + box.h <= p.box.y || p.box.y + p.box.h <= box.y)) { spot = { x, y, box }; break; }
       }
       if (!spot) { failed = true; break; }
-      placed.push({ it, f, weight, x: spot.x, y: spot.y + asc, box: spot.box, color: colors[i % colors.length] });
+      placed.push({ it, f, weight, x: spot.x, y: spot.y + asc, box: spot.box, color: it.color || colors[i % colors.length] });
     }
     if (!failed) break;
     scale *= 0.86;
   }
   for (const p of placed) { ctx.font = `${p.weight} ${p.f}px ${cloudFont()}`; ctx.fillStyle = p.color; ctx.fillText(p.it.name, p.x, p.y); }
+  if (legPad) {
+    const fs = 30, gap = 54, r = 11;
+    ctx.font = `600 ${fs}px ${cloudFont()}`;
+    const widths = legend.map((l) => r * 2 + 14 + ctx.measureText(l.label).width);
+    let x = (W - (widths.reduce((a, b) => a + b, 0) + gap * (legend.length - 1))) / 2;
+    const y = H - 30;
+    legend.forEach((l, i) => {
+      ctx.fillStyle = l.color; ctx.beginPath(); ctx.arc(x + r, y - fs * 0.32, r, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = "#4F5B70"; ctx.fillText(l.label, x + r * 2 + 14, y);
+      x += widths[i] + gap;
+    });
+  }
   return true;
 }
 function cloudFont() { return '"Segoe UI", "Segoe UI Variable Display", system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif'; }
-function cloudItems(colIdx) { return exportGroups(colIdx).groups.slice(0, 60).map((g) => ({ name: g.name, n: g.list.length })); }
+/* By tone, a tag appears once per tone, sized by how often it shows up in comments of that tone. */
+function cloudSpec(colIdx) {
+  const g = exportGroups(colIdx).groups;
+  const plain = () => ({ items: g.slice(0, 60).map((x) => ({ name: x.name, n: x.list.length })), legend: null, byTone: false });
+  if (!PALETTES[P.settings.palette].tone) return plain();
+  const items = [];
+  for (const x of g) for (const k of ["pos", "neg"]) { const n = x.tones[k].length; if (n) items.push({ name: x.name, n, tone: k }); }
+  if (!items.length) return plain(); // nothing marked yet: a plain cloud beats an empty one
+  items.sort((a, b) => b.n - a.n || a.name.localeCompare(b.name));
+  const top = items.slice(0, 60), rank = { pos: 0, neg: 0 };
+  for (const it of top) { const sh = TONES[it.tone].cloud; it.color = sh[Math.min(sh.length - 1, Math.floor(rank[it.tone]++ / 6))]; }
+  const legend = [];
+  if (top.some((i) => i.tone === "pos")) legend.push({ label: "Positive", color: TONES.pos.cloud[0] });
+  if (top.some((i) => i.tone === "neg")) legend.push({ label: "Negative", color: TONES.neg.cloud[0] });
+  return { items: top, legend, byTone: true };
+}
 function drawAllClouds() {
   const colors = PALETTES[P.settings.palette].colors;
-  for (const c of commentCols()) { const cv = $("#cloud-" + c.idx); if (cv) drawCloud(cv, cloudItems(c.idx), colors); }
+  for (const c of commentCols()) {
+    const cv = $("#cloud-" + c.idx); if (!cv) continue;
+    const sp = cloudSpec(c.idx);
+    drawCloud(cv, sp.items, colors, sp.legend);
+  }
 }
 function cloudCanvas(colIdx) {
   const cv = document.createElement("canvas"); cv.width = 1600; cv.height = 900;
-  const has = drawCloud(cv, cloudItems(colIdx), PALETTES[P.settings.palette].colors);
-  return { cv, has };
+  const sp = cloudSpec(colIdx);
+  const has = drawCloud(cv, sp.items, PALETTES[P.settings.palette].colors, sp.legend);
+  return { cv, has, spec: sp };
 }
 const canvasPng = (cv) => new Promise((res) => cv.toBlob((b) => res(b), "image/png"));
 
@@ -1377,14 +1543,24 @@ async function buildDocx() {
     if (multi) kids.push(heading(label, d.HeadingLevel.HEADING_2));
     kids.push(new d.Paragraph({ children: [text(`${plural(g.total, "comment")}${multi ? "" : ` on \u201c${label}\u201d`}${g.skipped ? `, plus ${g.skipped} skipped as non-responses` : ""}.`)] }));
     if (s.includeClouds && g.groups.length) {
-      const { cv } = cloudCanvas(col.idx);
+      const { cv, spec } = cloudCanvas(col.idx);
       const png = new Uint8Array(await (await canvasPng(cv)).arrayBuffer());
-      const top = g.groups.slice(0, 12).map((x) => `${x.name} (${x.list.length})`).join(", ");
-      kids.push(new d.Paragraph({ children: [new d.ImageRun({ type: "png", data: png, transformation: { width: 624, height: 351 }, altText: { name: "Word cloud", title: `Word cloud: ${label}`, description: `Word cloud of tags for ${label}. Largest: ${top}.` } })] }));
+      const top = spec.items.slice(0, 12).map((x) => `${x.name}${x.tone ? `, ${TONES[x.tone].verb}` : ""} (${x.n})`).join("; ");
+      const how = spec.byTone ? "Tags are sized by how many positive or negative comments they appear in, green for positive and red for negative" : "Tags are sized by how many comments they appear in";
+      kids.push(new d.Paragraph({ children: [new d.ImageRun({ type: "png", data: png, transformation: { width: 624, height: 351 }, altText: { name: "Word cloud", title: `Word cloud: ${label}`, description: `Word cloud of tags for ${label}. ${how}. Largest: ${top}.` } })] }));
     }
     const H = multi ? d.HeadingLevel.HEADING_3 : d.HeadingLevel.HEADING_2;
-    for (const grp of g.groups) { kids.push(heading(`${capFirst(grp.name)} (${grp.list.length})`, H)); grp.list.forEach((c) => kids.push(bullet(c))); }
-    if (s.includeUntagged && g.untagged.length) { kids.push(heading(`Untagged (${g.untagged.length})`, H)); g.untagged.forEach((c) => kids.push(bullet(c))); }
+    /* Bullets are grouped by tone, but only where a group actually holds more than one. */
+    const body = (list, tones) => {
+      const kinds = [["pos", "Positive"], ["neg", "Negative"], ["mix", "Mixed"], ["none", "Not marked"]].filter(([k]) => tones[k].length);
+      if (kinds.length < 2) { list.forEach((c) => kids.push(bullet(c))); return; }
+      for (const [k, lbl] of kinds) {
+        kids.push(new d.Paragraph({ spacing: { before: 100, after: 40 }, keepNext: true, children: [text(`${lbl} (${tones[k].length})`, { bold: true, size: 20, color: "4F5B70" })] }));
+        tones[k].forEach((c) => kids.push(bullet(c)));
+      }
+    };
+    for (const grp of g.groups) { kids.push(heading(`${capFirst(grp.name)} (${grp.list.length})`, H)); body(grp.list, grp.tones); }
+    if (s.includeUntagged && g.untagged.length) { kids.push(heading(`Untagged (${g.untagged.length})`, H)); body(g.untagged, g.untaggedTones); }
   }
   const head = (size, font) => ({ run: { font, size, color: "0F4761" }, paragraph: { spacing: { before: size >= 40 ? 360 : 160, after: 80 }, keepNext: true, keepLines: true } });
   const doc = new d.Document({
@@ -1453,9 +1629,11 @@ document.addEventListener("click", async (e) => {
     case "start-over": if (confirm("Start over with a new file? The current project will be removed from this browser. Download a project file first if you want to keep it.")) { localStorage.removeItem(LS_PROJECT); P = null; D = null; UI.view = "landing"; render(); } break;
     case "cancel-setup": if (T.editing) { T = null; UI.view = "work"; } else { T = null; UI.view = "landing"; } render(); break;
     case "start": startProject(); break;
-    case "tab": UI.tab = el.dataset.tab; render(); break;
+    case "tab": UI.tab = el.dataset.tab; render(); window.scrollTo({ top: 0 }); break;
     case "fstatus": UI.f.status = el.dataset.v; UI.browseLimit = 60; render(); break;
-    case "review-todo": UI.f = { status: "todo", col: "all", tag: null, ctx: {}, q: "" }; UI.tab = "review"; render(); break;
+    case "review-todo": UI.f = { status: "todo", col: "all", tag: null, tone: null, ctx: {}, q: "" }; UI.tab = "review"; render(); break;
+    case "ftone": UI.f.tone = el.dataset.v || null; UI.browseLimit = 60; render(); break;
+    case "tone": { const c = cmt(); if (c) { setTone(c, el.dataset.v); changed(); } break; }
     case "ftag": UI.f.tag = UI.f.tag === id ? null : id; UI.browseLimit = 60; render(); break;
     case "ftag-clear": UI.f.tag = null; render(); break;
     case "exclude": excludeWord(id); break;
@@ -1502,7 +1680,9 @@ document.addEventListener("change", (e) => {
   if (el.id === "fileCodebook" && el.files[0]) { loadCodebook(el.files[0]); el.value = ""; return; }
   const k = el.dataset.chg; if (!k) return;
   if (k === "role") { const c = T.cols[+el.dataset.i]; c.role = el.value; if (!c.edited) c.label = el.value === "context" ? c.d.context : c.d.comment; render(); }
+  else if (k === "coltone") { T.cols[+el.dataset.i].tone = el.value || null; }
   else if (k === "sheet") { T.sheetIdx = +el.value; T.cols = draftFromSheet(T.sheets[T.sheetIdx]); render(); }
+  else if (k === "ftone") { UI.f.tone = el.value || null; UI.browseLimit = 60; render(); }
   else if (k === "codebook") { T.codebook = el.value; }
   else if (k === "fcol") { UI.f.col = el.value; UI.browseLimit = 60; render(); }
   else if (k === "fctx") { UI.f.ctx[el.dataset.i] = el.value; UI.browseLimit = 60; render(); }
@@ -1545,6 +1725,8 @@ document.addEventListener("keydown", (e) => {
   if (e.key === "Enter") { e.preventDefault(); if (!isSkipped(c)) confirmAll(c); recount(); saveSoon(); go(1); return; }
   if (e.key === "s" || e.key === "S") { e.preventDefault(); const was = isSkipped(c); toggleSkip(c); recount(); saveSoon(); if (!was) go(1); else render(); return; }
   if (e.key === "t" || e.key === "T" || e.key === "/") { e.preventDefault(); const i = $("#addtag"); if (i) i.focus(); return; }
+  const tk = { p: "pos", n: "neg", m: "mix" }[e.key.toLowerCase()];
+  if (tk) { e.preventDefault(); if (!isSkipped(c)) { setTone(c, tk); changed(); } return; }
   if (/^[1-9]$/.test(e.key) && UI.keymap) {
     const slot = UI.keymap[+e.key - 1]; if (!slot) return;
     e.preventDefault();
